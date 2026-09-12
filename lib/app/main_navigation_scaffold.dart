@@ -64,8 +64,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
 
     if (isPrimary) {
       return GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => _onTabSelected(index),
         child: Container(
+          color: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -73,10 +75,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.duoGreen,
                   shape: BoxShape.circle,
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
                       color: AppTheme.duoGreenDark,
                       offset: Offset(0, 4),
@@ -102,10 +104,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
     }
 
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => _onTabSelected(index),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
+        child: Container(
+          color: Colors.transparent,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,

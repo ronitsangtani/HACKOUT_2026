@@ -458,13 +458,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Expanded(
                           child: _buildToolButton(
+                            icon: Icons.emoji_events_rounded,
+                            label: 'Rankings',
+                            color: AppTheme.duoYellowDark,
+                            onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildToolButton(
                             icon: Icons.auto_graph_rounded,
-                            label: 'Impact Stats',
+                            label: 'Impact',
                             color: AppTheme.duoGreen,
                             onTap: () => Navigator.pushNamed(context, AppRoutes.carbonImpact),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: _buildToolButton(
                             icon: Icons.tune_rounded,
@@ -473,7 +482,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             onTap: () => Navigator.pushNamed(context, AppRoutes.whatIfSimulator),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: _buildToolButton(
                             icon: Icons.history_rounded,

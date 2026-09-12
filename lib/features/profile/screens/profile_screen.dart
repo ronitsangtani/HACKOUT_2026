@@ -153,6 +153,7 @@ class ProfileScreen extends ConsumerWidget {
                       value: '#$rankNumber',
                       label: 'League Rank',
                       color: AppTheme.duoYellow,
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
                     ),
                   ),
                 ],
@@ -244,8 +245,9 @@ class ProfileScreen extends ConsumerWidget {
     required String value,
     required String label,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -277,5 +279,14 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: card,
+      );
+    }
+    return card;
   }
 }
