@@ -11,6 +11,7 @@ import '../features/ranking/screens/leaderboard_screen.dart';
 import '../features/recommendations/screens/recommendations_screen.dart';
 import '../features/recommendations/screens/what_if_simulator_screen.dart';
 import '../features/recycling/screens/recycling_locator_screen.dart';
+import '../features/rewards/screens/rewards_screen.dart';
 import 'main_navigation_scaffold.dart';
 
 /// Centralized route definitions and generator for EcoLoop.
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String whatIf = '/what-if';
   static const String whatIfSimulator = whatIf;
   static const String recycling = '/recycling';
+  static const String rewards = '/rewards';
   static const String leaderboard = '/leaderboard';
   static const String appSettings = '/settings';
   static const String settings = appSettings;
@@ -90,6 +92,11 @@ class AppRoutes {
       case recycling:
         return MaterialPageRoute(
           builder: (_) => const RecyclingLocatorScreen(),
+          settings: settings,
+        );
+      case rewards:
+        return MaterialPageRoute(
+          builder: (_) => const RewardsScreen(),
           settings: settings,
         );
       case leaderboard:

@@ -8,10 +8,9 @@ import 'package:ecoloop/features/activities/screens/carbon_impact_screen.dart';
 import 'package:ecoloop/features/profile/screens/settings_screen.dart';
 import 'package:ecoloop/features/recommendations/screens/recommendations_screen.dart';
 import 'package:ecoloop/features/recommendations/screens/what_if_simulator_screen.dart';
-import 'package:ecoloop/features/recycling/screens/recycling_locator_screen.dart';
+import 'package:ecoloop/features/rewards/screens/rewards_screen.dart';
 
 import 'package:ecoloop/core/providers/ecoloop_providers.dart';
-import 'package:ecoloop/features/recycling/models/recycling_center.dart';
 import 'package:ecoloop/models/firestore_models.dart';
 
 void main() {
@@ -31,15 +30,15 @@ void main() {
 
       // Check Duolingo navigation destinations
       expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Map'), findsOneWidget);
+      expect(find.text('Rewards'), findsOneWidget);
       expect(find.text('Add'), findsOneWidget);
       expect(find.text('Rank'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
 
-      // Tap Map tab
-      await tester.tap(find.text('Map'));
+      // Tap Rewards tab
+      await tester.tap(find.text('Rewards'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('ECO MAP'), findsOneWidget);
+      expect(find.text('ECO REWARDS'), findsOneWidget);
 
       // Tap Rank tab
       await tester.tap(find.text('Rank'));
@@ -136,20 +135,14 @@ void main() {
     });
   });
 
-  group('RecyclingLocatorScreen Tests', () {
-    testWidgets('Renders search and recycling drop-off centers', (tester) async {
-      await tester.pumpWidget(createTestWidget(
-        const RecyclingLocatorScreen(),
-        [
-          recyclingCentersProvider.overrideWith((ref, material) async => RecyclingCenter.mockCenters),
-        ],
-      ));
-      await tester.pumpAndSettle();
+  group('RewardsScreen Tests', () {
+    testWidgets('Renders live eco points and milestone badges', (tester) async {
+      await tester.pumpWidget(createTestWidget(const RewardsScreen()));
+      await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('ECO MAP'), findsOneWidget);
-      expect(find.text('All Hubs'), findsOneWidget);
-      expect(find.text('Recycling'), findsOneWidget);
-      expect(find.text('Transport'), findsOneWidget);
+      expect(find.text('ECO REWARDS'), findsOneWidget);
+      expect(find.text('UNLOCKED MILESTONE BADGES'), findsOneWidget);
+      expect(find.text('VIEW LEADERBOARD'), findsOneWidget);
     });
   });
 

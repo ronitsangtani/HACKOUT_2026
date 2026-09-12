@@ -3,7 +3,7 @@ import '../features/activities/screens/add_activity_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/ranking/screens/leaderboard_screen.dart';
-import '../features/recycling/screens/recycling_locator_screen.dart';
+import '../features/rewards/screens/rewards_screen.dart';
 import 'theme.dart';
 
 /// Duolingo-styled 5-destination bottom navigation scaffold for EcoLoop.
@@ -24,7 +24,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),           // 🏠 Home / Eco Journey Path
-    RecyclingLocatorScreen(),    // 🗺 Eco Map & Circular Hubs
+    RewardsScreen(),             // 🎁 Rewards & Milestones
     AddActivityScreen(),         // ➕ Add Activity (Lesson Flow)
     LeaderboardScreen(),         // 🏆 Rank / Leaderboard
     ProfileScreen(),             // 👤 Profile & Badges
@@ -162,9 +162,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               ),
               _buildNavItem(
                 index: 1,
-                icon: Icons.map_outlined,
-                selectedIcon: Icons.map_rounded,
-                label: 'Map',
+                icon: Icons.card_giftcard_outlined,
+                selectedIcon: Icons.card_giftcard_rounded,
+                label: 'Rewards',
               ),
               _buildNavItem(
                 index: 2,
