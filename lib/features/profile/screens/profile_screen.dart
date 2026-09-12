@@ -185,6 +185,8 @@ class ProfileScreen extends ConsumerWidget {
                 maxProgress: 1,
                 unit: 'action',
                 isUnlocked: records.isNotEmpty,
+                currentPoints: points,
+                requiredPoints: 50,
               ),
               const SizedBox(height: 10),
 
@@ -196,6 +198,8 @@ class ProfileScreen extends ConsumerWidget {
                 maxProgress: 7,
                 unit: 'days',
                 isUnlocked: streak >= 7,
+                currentPoints: points,
+                requiredPoints: 100,
               ),
               const SizedBox(height: 10),
 
@@ -207,6 +211,8 @@ class ProfileScreen extends ConsumerWidget {
                 maxProgress: 50.0,
                 unit: 'km',
                 isUnlocked: false,
+                currentPoints: points,
+                requiredPoints: 250,
               ),
               const SizedBox(height: 10),
 
@@ -218,6 +224,8 @@ class ProfileScreen extends ConsumerWidget {
                 maxProgress: 10.0,
                 unit: 'kg',
                 isUnlocked: false,
+                currentPoints: points,
+                requiredPoints: 400,
               ),
               const SizedBox(height: 10),
 
@@ -229,6 +237,8 @@ class ProfileScreen extends ConsumerWidget {
                 maxProgress: 50.0,
                 unit: 'kg',
                 isUnlocked: totalCo2Saved >= 50.0,
+                currentPoints: points,
+                requiredPoints: 500,
               ),
 
               const SizedBox(height: 32),

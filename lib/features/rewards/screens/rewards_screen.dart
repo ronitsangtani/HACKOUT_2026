@@ -207,52 +207,56 @@ class RewardsScreen extends ConsumerWidget {
                   itemCount: reward.badges.length,
                   itemBuilder: (context, index) {
                     final badge = reward.badges[index];
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: badge.isUnlocked ? Colors.white : AppTheme.duoGrayLight,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: badge.isUnlocked ? AppTheme.duoYellow : AppTheme.duoGray,
-                          width: 2,
+                    final targetPoints = [50, 150, 300, 450, 600][index % 5];
+                    return GestureDetector(
+                      onTap: () => _showBadgeDialog(context, badge, livePoints, targetPoints),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: badge.isUnlocked ? Colors.white : AppTheme.duoGrayLight,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: badge.isUnlocked ? AppTheme.duoYellow : AppTheme.duoGray,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: badge.isUnlocked ? AppTheme.duoYellowDark.withValues(alpha: 0.4) : AppTheme.duoGray,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: badge.isUnlocked ? AppTheme.duoYellowDark.withValues(alpha: 0.4) : AppTheme.duoGray,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            badge.icon,
-                            size: 28,
-                            color: badge.isUnlocked ? AppTheme.duoYellowDark : AppTheme.duoSubtext,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            badge.title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: badge.isUnlocked ? AppTheme.duoText : AppTheme.duoSubtext,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              badge.icon,
+                              size: 28,
+                              color: badge.isUnlocked ? AppTheme.duoYellowDark : AppTheme.duoSubtext,
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            badge.isUnlocked ? 'Unlocked ✓' : 'In Progress',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: badge.isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoSubtext,
+                            const SizedBox(height: 6),
+                            Text(
+                              badge.title,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                color: badge.isUnlocked ? AppTheme.duoText : AppTheme.duoSubtext,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              badge.isUnlocked ? 'Unlocked ✓' : 'In Progress',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: badge.isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoSubtext,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -261,6 +265,225 @@ class RewardsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBadgeDialog(BuildContext context, dynamic badge, int livePoints, int targetPts) {
+    final bool isUnlocked = badge.isUnlocked;
+    final double pointsFraction = targetPts > 0 ? (livePoints / targetPts).clamp(0.0, 1.0) : 1.0;
+    final int ptsRemaining = (targetPts - livePoints).clamp(0, targetPts);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppTheme.duoGray, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                offset: Offset(0, 8),
+                blurRadius: 18,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: isUnlocked ? AppTheme.duoYellowLight : AppTheme.duoGrayLight,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isUnlocked ? AppTheme.duoYellow : AppTheme.duoGrayDark,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isUnlocked ? AppTheme.duoYellowDark.withValues(alpha: 0.4) : AppTheme.duoGray,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  badge.icon,
+                  size: 36,
+                  color: isUnlocked ? AppTheme.duoYellowDark : AppTheme.duoSubtext,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                badge.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  color: AppTheme.duoText,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                badge.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.duoSubtext,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isUnlocked
+                      ? AppTheme.duoGreenLight.withValues(alpha: 0.35)
+                      : AppTheme.duoBlueLight.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isUnlocked ? AppTheme.duoGreenLight : AppTheme.duoBlueLight,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'YOUR POINTS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            color: isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoBlueDark,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          'POINTS NEEDED',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            color: isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoBlueDark,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('💎', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$livePoints pts',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                color: AppTheme.duoText,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Text('🎯', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$targetPts pts',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                color: AppTheme.duoText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: isUnlocked ? 1.0 : pointsFraction,
+                        minHeight: 12,
+                        backgroundColor: Colors.white,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isUnlocked ? AppTheme.duoGreen : AppTheme.duoBlue,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isUnlocked ? 'Unlocked ✓' : 'In Progress ⏳',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            color: isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoOrangeDark,
+                          ),
+                        ),
+                        Text(
+                          isUnlocked ? 'Goal achieved! 🎉' : '$ptsRemaining pts needed',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoSubtext,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  width: double.infinity,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isUnlocked ? AppTheme.duoGreen : AppTheme.duoBlue,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoBlueDark,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    isUnlocked ? 'AWESOME!' : 'GOT IT!',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: Colors.white,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

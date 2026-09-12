@@ -13,6 +13,7 @@ import 'package:ecoloop/features/dashboard/dashboard_screen.dart';
 
 import 'package:ecoloop/core/providers/ecoloop_providers.dart';
 import 'package:ecoloop/core/widgets/polar_bear_widget.dart';
+import 'package:ecoloop/core/widgets/achievement_badge_widget.dart';
 import 'package:ecoloop/models/firestore_models.dart';
 
 void main() {
@@ -297,6 +298,49 @@ void main() {
       // Verify AI recommendation card is prominently displayed
       expect(find.text('AI RECOMMENDATION'), findsOneWidget);
       expect(find.text('TRY THIS'), findsOneWidget);
+    });
+
+    testWidgets('AchievementBadgeWidget opens dialog with current and required points breakdown', (tester) async {
+      await tester.pumpWidget(
+        createTestWidget(
+          const Scaffold(
+            body: AchievementBadgeWidget(
+              title: 'Green Commuter',
+              description: 'Travel 50 km using transit, walking or cycling',
+              emoji: '🚲',
+              currentProgress: 35.0,
+              maxProgress: 50.0,
+              unit: 'km',
+              isUnlocked: false,
+              currentPoints: 200,
+              requiredPoints: 250,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Green Commuter'), findsOneWidget);
+
+      // Tap the badge
+      await tester.tap(find.text('Green Commuter'));
+      await tester.pumpAndSettle();
+
+      // Verify dialog is rendered with points breakdown
+      expect(find.text('YOUR POINTS'), findsOneWidget);
+      expect(find.text('POINTS NEEDED'), findsOneWidget);
+      expect(find.text('200 pts'), findsOneWidget);
+      expect(find.text('250 pts'), findsOneWidget);
+      expect(find.text('In Progress ⏳'), findsOneWidget);
+      expect(find.text('50 pts needed'), findsOneWidget);
+      expect(find.text('GOT IT!'), findsOneWidget);
+
+      // Close dialog
+      await tester.tap(find.text('GOT IT!'));
+      await tester.pumpAndSettle();
+
+      // Dialog should be dismissed
+      expect(find.text('YOUR POINTS'), findsNothing);
     });
   });
 }
