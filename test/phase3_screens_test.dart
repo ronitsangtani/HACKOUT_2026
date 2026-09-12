@@ -30,32 +30,32 @@ void main() {
     testWidgets('Renders all 5 bottom navigation destinations and switches tabs', (tester) async {
       await tester.pumpWidget(createTestWidget(const MainNavigationScaffold()));
 
-      // Check Duolingo navigation destinations
+      // Check Duolingo navigation destinations: Home, Reward, Add, Rank, Stimulator
       expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Map'), findsOneWidget);
+      expect(find.text('Reward'), findsOneWidget);
       expect(find.text('Add'), findsOneWidget);
       expect(find.text('Rank'), findsOneWidget);
-      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Stimulator'), findsOneWidget);
 
-      // Tap Map tab
-      await tester.tap(find.text('Map'));
+      // Tap Reward tab
+      await tester.tap(find.text('Reward'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('🌍 ECO MAP'), findsOneWidget);
+      expect(find.text('ECO REWARDS'), findsOneWidget);
 
       // Tap Rank tab
       await tester.tap(find.text('Rank'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('🏆 ECO LEAGUE'), findsOneWidget);
 
-      // Tap Profile tab
-      await tester.tap(find.text('Profile'));
+      // Tap Stimulator tab
+      await tester.tap(find.text('Stimulator'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('PROFILE'), findsOneWidget);
+      expect(find.text('What-If Simulator'), findsOneWidget);
     });
   });
 
   group('DashboardScreen Journey Path Tests', () {
-    testWidgets('Renders all 6 journey levels concurrently and allows tapping any level directly', (tester) async {
+    testWidgets('Renders the 4 active journey stages and allows tapping any level directly', (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -64,21 +64,24 @@ void main() {
       await tester.pumpWidget(createTestWidget(const DashboardScreen()));
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Verify all 6 levels are present together
+      // Verify the 4 active levels are present together
       expect(find.text('Transport'), findsWidgets);
       expect(find.text('Energy'), findsOneWidget);
       expect(find.text('Diet & Food'), findsOneWidget);
-      expect(find.text('Zero Waste'), findsOneWidget);
       expect(find.text('Circular Goods'), findsOneWidget);
-      expect(find.text('Eco Master'), findsOneWidget);
 
-      // Verify tapping 'Energy' directly opens the energy flow without any locked dialog
+      // Verify Zero Waste and Eco Master are removed
+      expect(find.text('Zero Waste'), findsNothing);
+      expect(find.text('Eco Master'), findsNothing);
+
+      // Verify tapping 'Energy' directly opens the energy flow
       await tester.tap(find.text('Energy'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('Which energy action?'), findsOneWidget);
       expect(find.text('Grid Electricity'), findsOneWidget);
+      expect(find.text('MULTIPLE SELECTIONS ALLOWED'), findsOneWidget);
     });
   });
 
@@ -214,13 +217,15 @@ void main() {
   });
 
   group('RewardsScreen Tests', () {
-    testWidgets('Renders live eco points and milestone badges', (tester) async {
+    testWidgets('Renders live eco points, perks card, and milestone badges without community leaderboard', (tester) async {
       await tester.pumpWidget(createTestWidget(const RewardsScreen()));
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('ECO REWARDS'), findsOneWidget);
       expect(find.text('UNLOCKED MILESTONE BADGES'), findsOneWidget);
-      expect(find.text('VIEW LEADERBOARD'), findsOneWidget);
+      expect(find.text('EARN GEMS & KEEP ICE COOL'), findsOneWidget);
+      expect(find.text('COMMUNITY LEADERBOARD'), findsNothing);
+      expect(find.text('VIEW LEADERBOARD'), findsNothing);
     });
   });
 
@@ -251,7 +256,7 @@ void main() {
       expect(find.byType(PolarBearWidget), findsNWidgets(3));
     });
 
-    testWidgets('Dashboard displays Polar Bear stage and Carbon Status card', (tester) async {
+    testWidgets('Dashboard displays Polar Bear stage, Header profile mascot, and Carbon Status card', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -260,7 +265,38 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('YOUR CARBON STATUS'), findsOneWidget);
-      expect(find.byType(PolarBearWidget), findsOneWidget);
+      // Both Header profile button and Hero Stage contain PolarBearWidget
+      expect(find.byType(PolarBearWidget), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('AddActivityScreen supports multiple choice in non-transport and shows AI recommendation in summary', (tester) async {
+      await tester.pumpWidget(createTestWidget(const AddActivityScreen(initialCategory: 'Energy')));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Which energy action?'), findsOneWidget);
+      expect(find.text('MULTIPLE SELECTIONS ALLOWED'), findsOneWidget);
+
+      // Select Grid Electricity
+      await tester.tap(find.text('Grid Electricity'));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Also select Rooftop Solar Power (Multiple selection allowed!)
+      await tester.tap(find.text('Rooftop Solar Power'));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Advance to Step 3 (Quantities)
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Quantities Recorded'), findsOneWidget);
+
+      // Submit calculation
+      await tester.tap(find.text('CALCULATE & LOG'));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Verify AI recommendation card is prominently displayed
+      expect(find.text('AI RECOMMENDATION'), findsOneWidget);
+      expect(find.text('TRY THIS'), findsOneWidget);
     });
   });
 }

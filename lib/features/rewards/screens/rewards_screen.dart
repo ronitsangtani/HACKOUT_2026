@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/widgets/eco_progress_bar.dart';
-import '../../../core/widgets/primary_game_button.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/reward_item.dart';
 
@@ -146,51 +144,44 @@ class RewardsScreen extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
-                // 2. Leaderboard Navigation Banner
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.duoYellowLight.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.duoYellow, width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: AppTheme.duoYellowDark, offset: Offset(0, 3)),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.duoYellow,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text('🏆', style: TextStyle(fontSize: 22)),
+                // 2. Polar Bear Milestone Perks Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.duoBlueLight.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.duoBlueLight, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.duoBlue,
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'COMMUNITY LEADERBOARD',
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.duoYellowDark),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Compete in Emerald League & win bonus points!',
-                                style: TextStyle(fontSize: 11, color: AppTheme.duoText, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
+                        alignment: Alignment.center,
+                        child: const Text('❄️', style: TextStyle(fontSize: 24)),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'EARN GEMS & KEEP ICE COOL',
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoBlueDark),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Complete daily stages and eco challenges to level up and unlock exclusive badges!',
+                              style: TextStyle(fontSize: 11, color: AppTheme.duoText, fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.duoYellowDark),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -267,14 +258,6 @@ class RewardsScreen extends ConsumerWidget {
                   },
                 ),
 
-                const SizedBox(height: 28),
-
-                // 4. Action CTA
-                PrimaryGameButton(
-                  text: 'VIEW LEADERBOARD',
-                  color: GameButtonColor.yellow,
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
-                ),
                 const SizedBox(height: 16),
               ],
             ),

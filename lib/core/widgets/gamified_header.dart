@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../app/routes.dart';
 import '../../app/theme.dart';
+import 'polar_bear_widget.dart';
 
 /// Compact top status bar displaying Level, Streak, and Eco Points
 /// styled like Duolingo's iconic pill counters.
@@ -10,6 +12,7 @@ class GamifiedHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onLevelTap;
   final VoidCallback? onStreakTap;
   final VoidCallback? onPointsTap;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onRefresh;
 
   const GamifiedHeader({
@@ -20,6 +23,7 @@ class GamifiedHeader extends StatelessWidget implements PreferredSizeWidget {
     this.onLevelTap,
     this.onStreakTap,
     this.onPointsTap,
+    this.onProfileTap,
     this.onRefresh,
   });
 
@@ -108,12 +112,43 @@ class GamifiedHeader extends StatelessWidget implements PreferredSizeWidget {
               onTap: onPointsTap,
             ),
 
-            if (onRefresh != null)
-              IconButton(
-                icon: const Icon(Icons.refresh, color: AppTheme.duoSubtext, size: 22),
-                tooltip: 'Refresh',
-                onPressed: onRefresh,
+            // Circular Profile Button with Polar Bear Mascot
+            Tooltip(
+              message: 'Profile',
+              child: GestureDetector(
+                onTap: onProfileTap ?? () => Navigator.pushNamed(context, AppRoutes.profile),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppTheme.duoBlueLight.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.duoBlue, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppTheme.duoBlueDark,
+                        offset: Offset(0, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: ClipOval(
+                    child: SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: Center(
+                        child: PolarBearWidget(
+                          size: 28,
+                          mood: PolarBearMood.happy,
+                          showPlatform: false,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
+            ),
           ],
         ),
       ),

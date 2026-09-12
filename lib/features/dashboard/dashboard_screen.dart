@@ -53,11 +53,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final hasTransport = records.any((r) => r.category.toLowerCase().contains('transport'));
     final hasEnergy = records.any((r) => r.category.toLowerCase().contains('energy'));
     final hasFood = records.any((r) => r.category.toLowerCase().contains('food') || r.category.toLowerCase().contains('diet'));
-    final hasWaste = records.any((r) => r.category.toLowerCase().contains('waste'));
     final hasShopping = records.any((r) => r.category.toLowerCase().contains('shop') || r.category.toLowerCase().contains('circular') || r.category.toLowerCase().contains('good'));
-    final hasMaster = (records.length >= 5) || (hasTransport && hasEnergy && hasFood && hasWaste && hasShopping);
 
-    // Focus level for pulsing START badge
+    // Focus level for pulsing START badge (across the 4 active stages)
     final String activeFocus;
     if (!hasTransport) {
       activeFocus = 'transport';
@@ -65,12 +63,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       activeFocus = 'energy';
     } else if (!hasFood) {
       activeFocus = 'food';
-    } else if (!hasWaste) {
-      activeFocus = 'waste';
-    } else if (!hasShopping) {
-      activeFocus = 'shopping';
     } else {
-      activeFocus = 'master';
+      activeFocus = 'shopping';
     }
 
     final NodeStatus transportStatus = hasTransport
@@ -82,22 +76,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final NodeStatus foodStatus = hasFood
         ? NodeStatus.completed
         : (activeFocus == 'food' ? NodeStatus.current : NodeStatus.inProgress);
-    final NodeStatus wasteStatus = hasWaste
-        ? NodeStatus.completed
-        : (activeFocus == 'waste' ? NodeStatus.current : NodeStatus.inProgress);
     final NodeStatus shoppingStatus = hasShopping
         ? NodeStatus.completed
         : (activeFocus == 'shopping' ? NodeStatus.current : NodeStatus.inProgress);
-    final NodeStatus lifestyleStatus = hasMaster
-        ? NodeStatus.completed
-        : (activeFocus == 'master' ? NodeStatus.current : NodeStatus.inProgress);
 
     final double transportProgress = hasTransport ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('transport')).length / 2).clamp(0.25, 0.9);
     final double energyProgress = hasEnergy ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('energy')).length / 2).clamp(0.25, 0.9);
     final double foodProgress = hasFood ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('food') || r.category.toLowerCase().contains('diet')).length / 2).clamp(0.25, 0.9);
-    final double wasteProgress = hasWaste ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('waste')).length / 2).clamp(0.25, 0.9);
     final double shoppingProgress = hasShopping ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('shop') || r.category.toLowerCase().contains('circular') || r.category.toLowerCase().contains('good')).length / 2).clamp(0.25, 0.9);
-    final double masterProgress = hasMaster ? 1.0 : (records.length / 5).clamp(0.2, 0.9);
 
     // Daily Goal calculation
     final double co2SavedToday = (records.length * 0.7).clamp(0.0, 2.0);
@@ -110,12 +96,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         level: level,
         streak: streak,
         ecoPoints: points,
-        onRefresh: () {
-          ref.invalidate(userActivitiesProvider);
-          if (user != null) {
-            ref.invalidate(userProfileProvider(user.uid));
-          }
-        },
+        onProfileTap: () => Navigator.pushNamed(context, AppRoutes.profile),
       ),
       body: RefreshIndicator(
         color: AppTheme.duoGreen,
@@ -132,22 +113,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. POLAR BEAR MASCOT HERO STAGE
-              _buildPolarBearStage(bearStatus),
-
-              const SizedBox(height: 16),
-
-              // 2. YOUR CARBON STATUS CARD
-              _buildCarbonStatusCard(bearStatus),
-
-              const SizedBox(height: 16),
-
-              // 3. DAILY ECO GOAL CARD
-              _buildDailyGoalCard(co2SavedToday, co2Goal, goalFraction, streak),
-
-              const SizedBox(height: 20),
-
-              // 4. UNIT / SECTION BANNER
+              // 1. "START WITH CIRCULAR BASICS" — PRIMARY PROMINENT SECTION
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
@@ -196,9 +162,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
 
-              // 5. VERTICAL DUOLINGO STEPPING STONE JOURNEY PATH
+              // POLAR BEAR MASCOT HERO STAGE
+              _buildPolarBearStage(bearStatus),
+
+              const SizedBox(height: 16),
+
+              // YOUR CARBON STATUS CARD
+              _buildCarbonStatusCard(bearStatus),
+
+              const SizedBox(height: 24),
+
+              // VERTICAL DUOLINGO STEPPING STONE JOURNEY PATH (4 STAGES)
               // Node 1: Transport (Center)
               Align(
                 alignment: Alignment.center,
@@ -210,7 +186,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onTap: () => _openActivityFlow('Transport'),
                 ),
               ),
-              _buildPathConnector(alignment: Alignment.center),
+              _buildPathConnector(alignment: const Alignment(0.22, 0)),
 
               // Node 2: Energy (Offset Right)
               Align(
@@ -223,7 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onTap: () => _openActivityFlow('Energy'),
                 ),
               ),
-              _buildPathConnector(alignment: const Alignment(0.25, 0)),
+              _buildPathConnector(alignment: const Alignment(0.0, 0)),
 
               // Node 3: Food & Diet (Offset Left)
               Align(
@@ -236,24 +212,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onTap: () => _openActivityFlow('Food'),
                 ),
               ),
-              _buildPathConnector(alignment: const Alignment(-0.25, 0)),
+              _buildPathConnector(alignment: const Alignment(-0.22, 0)),
 
-              // Node 4: Zero Waste (Center)
+              // Node 4: Circular Goods (Center)
               Align(
                 alignment: Alignment.center,
-                child: JourneyNodeWidget(
-                  title: 'Zero Waste',
-                  emoji: '♻️',
-                  status: wasteStatus,
-                  progress: wasteProgress,
-                  onTap: () => _openActivityFlow('Waste'),
-                ),
-              ),
-              _buildPathConnector(alignment: Alignment.center),
-
-              // Node 5: Circular Goods (Offset Right)
-              Align(
-                alignment: const Alignment(0.45, 0),
                 child: JourneyNodeWidget(
                   title: 'Circular Goods',
                   emoji: '🛍️',
@@ -262,29 +225,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onTap: () => _openActivityFlow('Shopping'),
                 ),
               ),
-              _buildPathConnector(alignment: const Alignment(0.25, 0)),
 
-              // Node 6: Master Lifestyle (Center)
-              Align(
-                alignment: Alignment.center,
-                child: JourneyNodeWidget(
-                  title: 'Eco Master',
-                  emoji: '🌍',
-                  status: lifestyleStatus,
-                  progress: masterProgress,
-                  onTap: () => _openActivityFlow(null),
-                ),
-              ),
+              const SizedBox(height: 28),
 
-              const SizedBox(height: 32),
+              // 2. DAILY ECO GOAL (Placed after Circular Basics, compact & gamified)
+              _buildDailyGoalCard(co2SavedToday, co2Goal, goalFraction, streak),
 
-              // 6. DAILY ECO CHALLENGE CARD (Featuring Polar Bear)
-              _buildDailyChallengeCard(),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 20),
-
-              // 7. QUICK EXPLORATION TOOLS
-              _buildToolsCard(context),
+              // 3. EXTRA CHALLENGES (Glitch-free, responsive)
+              _buildExtraChallengesSection(),
 
               const SizedBox(height: 24),
             ],
@@ -557,51 +507,128 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  /// Daily Challenge Card
-  Widget _buildDailyChallengeCard() {
+  /// Extra Challenges Section (Glitch-free, responsive with Wrap and flexible padding)
+  Widget _buildExtraChallengesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'EXTRA CHALLENGES',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                color: AppTheme.duoSubtext,
+                letterSpacing: 0.8,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.duoBlueLight.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                '2 ACTIVE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.duoBlueDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Challenge 1: Eco Commute
+        _buildChallengeCard(
+          emoji: '🚶',
+          title: "TODAY'S ECO COMMUTE",
+          description: 'Walk or cycle for a short trip today',
+          rewardBadge: '+30 🌱 REWARD',
+          co2Badge: 'Save ~1.2 kg CO₂',
+          buttonColor: GameButtonColor.blue,
+          onStart: () => _openActivityFlow('Transport'),
+        ),
+        const SizedBox(height: 12),
+        // Challenge 2: Green Diet
+        _buildChallengeCard(
+          emoji: '🥗',
+          title: 'GREEN DIET TARGET',
+          description: 'Choose a delicious plant-based meal today',
+          rewardBadge: '+25 🌱 REWARD',
+          co2Badge: 'Save ~2.0 kg CO₂',
+          buttonColor: GameButtonColor.green,
+          onStart: () => _openActivityFlow('Food'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChallengeCard({
+    required String emoji,
+    required String title,
+    required String description,
+    required String rewardBadge,
+    required String co2Badge,
+    required GameButtonColor buttonColor,
+    required VoidCallback onStart,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.duoBlueLight.withValues(alpha: 0.4),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.duoBlueLight, width: 2),
+        border: Border.all(color: AppTheme.duoGray, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AppTheme.duoGray, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 50,
-            height: 50,
-            decoration: const BoxDecoration(
-              color: AppTheme.duoBlue,
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppTheme.duoBlueLight.withValues(alpha: 0.5),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: AppTheme.duoBlueDark, offset: Offset(0, 3)),
-              ],
             ),
             alignment: Alignment.center,
-            child: const Text('🚶', style: TextStyle(fontSize: 26)),
+            child: Text(emoji, style: const TextStyle(fontSize: 22)),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  "TODAY'S ECO CHALLENGE",
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    color: AppTheme.duoBlueDark,
+                    fontSize: 10.5,
+                    color: AppTheme.duoSubtext,
                     letterSpacing: 0.8,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Walk or cycle for a short trip today',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppTheme.duoText),
+                Text(
+                  description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: AppTheme.duoText,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Row(
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -609,94 +636,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         color: AppTheme.duoGreenLight,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        '+30 🌱 REWARD',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.duoGreenDark),
+                      child: Text(
+                        rewardBadge,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.duoGreenDark,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Save ~1.2 kg CO₂',
-                      style: TextStyle(fontSize: 11, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+                    Text(
+                      co2Badge,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: AppTheme.duoSubtext,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           PrimaryGameButton(
             text: 'START',
-            color: GameButtonColor.blue,
-            height: 40,
-            fontSize: 12,
+            color: buttonColor,
+            height: 38,
+            fontSize: 11,
             isFullWidth: false,
-            onPressed: () => _openActivityFlow('Transport'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Circular Exploration Tools
-  Widget _buildToolsCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.duoGray, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'CIRCULAR EXPLORATION TOOLS',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-              color: AppTheme.duoSubtext,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildToolButton(
-                  icon: Icons.emoji_events_rounded,
-                  label: 'Rankings',
-                  color: AppTheme.duoYellowDark,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildToolButton(
-                  icon: Icons.auto_graph_rounded,
-                  label: 'Impact',
-                  color: AppTheme.duoGreen,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.carbonImpact),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildToolButton(
-                  icon: Icons.tune_rounded,
-                  label: 'Simulator',
-                  color: AppTheme.duoBlue,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.whatIfSimulator),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildToolButton(
-                  icon: Icons.history_rounded,
-                  label: 'History',
-                  color: AppTheme.duoOrange,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.activityHistory),
-                ),
-              ),
-            ],
+            onPressed: onStart,
           ),
         ],
       ),
@@ -721,36 +690,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.duoGrayLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.duoGray, width: 1.5),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: AppTheme.duoText),
-            ),
-          ],
         ),
       ),
     );

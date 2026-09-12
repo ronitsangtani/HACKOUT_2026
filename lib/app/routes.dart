@@ -6,6 +6,7 @@ import '../features/auth/screens/auth_wrapper_screen.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
+import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/ranking/screens/leaderboard_screen.dart';
 import '../features/recommendations/screens/recommendations_screen.dart';
@@ -33,6 +34,7 @@ class AppRoutes {
   static const String recycling = '/recycling';
   static const String rewards = '/rewards';
   static const String leaderboard = '/leaderboard';
+  static const String profile = '/profile';
   static const String appSettings = '/settings';
   static const String settings = appSettings;
 
@@ -102,6 +104,11 @@ class AppRoutes {
       case leaderboard:
         return MaterialPageRoute(
           builder: (_) => const LeaderboardScreen(),
+          settings: settings,
+        );
+      case profile:
+        return MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
           settings: settings,
         );
       case appSettings:

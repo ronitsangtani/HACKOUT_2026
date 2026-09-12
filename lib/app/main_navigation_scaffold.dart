@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../features/activities/screens/add_activity_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
-import '../features/profile/screens/profile_screen.dart';
 import '../features/ranking/screens/leaderboard_screen.dart';
-import '../features/recycling/screens/recycling_locator_screen.dart';
+import '../features/recommendations/screens/what_if_simulator_screen.dart';
+import '../features/rewards/screens/rewards_screen.dart';
 import 'theme.dart';
 
 /// Duolingo-styled 5-destination bottom navigation scaffold for EcoLoop.
@@ -23,11 +23,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   late int _currentIndex;
 
   final List<Widget> _screens = const [
-    DashboardScreen(),           // 🏠 Home / Polar Bear Journey Path
-    RecyclingLocatorScreen(),    // 🗺 Map / Eco Map Hubs
-    AddActivityScreen(),         // ➕ Add Activity (Lesson Flow)
-    LeaderboardScreen(),         // 🏆 Rank / Leaderboard
-    ProfileScreen(),             // 👤 Profile & Badges
+    DashboardScreen(),           // 🏠 Home (0)
+    RewardsScreen(),             // 🎁 Reward (1)
+    AddActivityScreen(),         // ➕ Add (2 - opens activity flow)
+    LeaderboardScreen(),         // 🏆 Rank (3)
+    WhatIfSimulatorScreen(),     // 🎛️ Stimulator (4)
   ];
 
   @override
@@ -162,9 +162,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               ),
               _buildNavItem(
                 index: 1,
-                icon: Icons.map_outlined,
-                selectedIcon: Icons.map_rounded,
-                label: 'Map',
+                icon: Icons.card_giftcard_outlined,
+                selectedIcon: Icons.card_giftcard_rounded,
+                label: 'Reward',
               ),
               _buildNavItem(
                 index: 2,
@@ -181,9 +181,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               ),
               _buildNavItem(
                 index: 4,
-                icon: Icons.person_outline_rounded,
-                selectedIcon: Icons.person_rounded,
-                label: 'Profile',
+                icon: Icons.tune_rounded,
+                selectedIcon: Icons.tune_rounded,
+                label: 'Stimulator',
               ),
             ],
           ),

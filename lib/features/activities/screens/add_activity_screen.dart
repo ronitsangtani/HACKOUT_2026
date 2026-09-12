@@ -28,8 +28,18 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
 
   // Selected state
   String? _selectedCategory;
+  // For Transport (strict single choice)
   Map<String, dynamic>? _selectedActivity;
+  // For all other stages (multiple choice allowed)
+  final Map<String, Map<String, dynamic>> _selectedActivitiesMap = {};
+  final Map<String, double> _activityQuantities = {};
   double _quantity = 15.0;
+
+  bool get _isSingleChoice => _selectedCategory == 'Transport';
+
+  bool get _hasSelection => _isSingleChoice
+      ? _selectedActivity != null
+      : _selectedActivitiesMap.isNotEmpty;
 
   // Result state from backend calculation
   ActivityAnalysisResult? _analysisResult;
@@ -86,34 +96,98 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     }
   }
 
+  void _toggleActivitySelection(Map<String, dynamic> act) {
+    final name = act['name'] as String;
+    final defaultQty = (act['defaultQty'] as num).toDouble();
+
+    if (_isSingleChoice) {
+      // Single choice for Transport
+      setState(() {
+        _selectedActivity = act;
+        _quantity = defaultQty;
+        _selectedActivitiesMap.clear();
+        _selectedActivitiesMap[name] = act;
+        _activityQuantities[name] = defaultQty;
+      });
+    } else {
+      // Multiple choice for all other categories
+      setState(() {
+        if (_selectedActivitiesMap.containsKey(name)) {
+          _selectedActivitiesMap.remove(name);
+          _activityQuantities.remove(name);
+          if (_selectedActivity?['name'] == name) {
+            _selectedActivity = _selectedActivitiesMap.isNotEmpty
+                ? _selectedActivitiesMap.values.last
+                : null;
+          }
+        } else {
+          _selectedActivitiesMap[name] = act;
+          _activityQuantities[name] = defaultQty;
+          _selectedActivity = act;
+          _quantity = defaultQty;
+        }
+      });
+    }
+  }
+
   PolarBearMood _getSelectionMood() {
-    if (_selectedActivity == null) return PolarBearMood.happy;
-    final actName = (_selectedActivity!['name'] as String).toLowerCase();
-    final co2Factor = (_selectedActivity!['co2Factor'] as num?)?.toDouble() ?? 0.0;
-    if (actName.contains('bicycle') ||
-        actName.contains('walking') ||
-        actName.contains('solar') ||
-        actName.contains('plant') ||
-        actName.contains('compost') ||
-        actName.contains('recycle')) {
-      return PolarBearMood.celebrating;
+    final acts = _isSingleChoice
+        ? (_selectedActivity != null ? [_selectedActivity!] : <Map<String, dynamic>>[])
+        : _selectedActivitiesMap.values.toList();
+
+    if (acts.isEmpty) return PolarBearMood.happy;
+
+    bool hasCelebrating = false;
+    bool hasWorried = false;
+
+    for (final a in acts) {
+      final actName = (a['name'] as String).toLowerCase();
+      final co2Factor = (a['co2Factor'] as num?)?.toDouble() ?? 0.0;
+      if (actName.contains('bicycle') ||
+          actName.contains('walking') ||
+          actName.contains('solar') ||
+          actName.contains('plant') ||
+          actName.contains('compost') ||
+          actName.contains('recycle')) {
+        hasCelebrating = true;
+      }
+      if (co2Factor >= 0.15 ||
+          actName.contains('petrol') ||
+          actName.contains('meat') ||
+          actName.contains('fashion') ||
+          actName.contains('trash')) {
+        hasWorried = true;
+      }
     }
-    if (co2Factor >= 0.15 ||
-        actName.contains('petrol') ||
-        actName.contains('meat') ||
-        actName.contains('fashion') ||
-        actName.contains('trash')) {
-      return PolarBearMood.worried;
-    }
+
+    if (hasCelebrating && !hasWorried) return PolarBearMood.celebrating;
+    if (hasWorried) return PolarBearMood.worried;
     return PolarBearMood.happy;
   }
 
   String _getSelectionSpeech() {
-    if (_selectedActivity == null) {
-      return "Pick your sustainability action! I'll react to your impact. ❄️";
+    final acts = _isSingleChoice
+        ? (_selectedActivity != null ? [_selectedActivity!] : <Map<String, dynamic>>[])
+        : _selectedActivitiesMap.values.toList();
+
+    if (acts.isEmpty) {
+      return _isSingleChoice
+          ? "Pick your commute mode! I'll react to your impact. ❄️"
+          : "Pick one or more ${_selectedCategory?.toLowerCase() ?? 'eco'} actions! ❄️";
     }
-    final actName = _selectedActivity!['name'] as String;
+
     final mood = _getSelectionMood();
+    if (acts.length > 1) {
+      if (mood == PolarBearMood.celebrating) {
+        return "Awesome! You selected ${acts.length} green actions! Ice is staying cool! ❄️";
+      } else if (mood == PolarBearMood.worried) {
+        return "${acts.length} actions selected. Some cause emissions. Let's see your total impact!";
+      } else {
+        return "${acts.length} ${_selectedCategory?.toLowerCase()} actions selected. Let's calculate!";
+      }
+    }
+
+    final actName = acts.first['name'] as String;
     if (mood == PolarBearMood.celebrating) {
       return "Yay! $actName is zero/low carbon! You're keeping my ice cool! ❄️";
     } else if (mood == PolarBearMood.worried) {
@@ -268,29 +342,109 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     return -(co2Kg * 5).round().clamp(10, 35);
   }
 
+  AlternativeSuggestion _getDefaultAlternative(String category, double co2Kg) {
+    final cat = category.toLowerCase();
+    if (cat.contains('transport')) {
+      return AlternativeSuggestion(
+        title: 'Switch to Metro or Bus Commute',
+        category: 'transport',
+        alternativeType: 'transit',
+        estimatedCo2Kg: (co2Kg * 0.25).clamp(0.1, 50.0),
+        co2ReductionKg: (co2Kg * 0.75).clamp(0.5, 40.0),
+        percentageReduction: 75.0,
+        explanation: 'Mass public transit significantly reduces congestion and urban carbon emissions.',
+      );
+    } else if (cat.contains('energy')) {
+      return AlternativeSuggestion(
+        title: 'Rooftop Solar & Efficient Appliances',
+        category: 'energy',
+        alternativeType: 'solar',
+        estimatedCo2Kg: (co2Kg * 0.15).clamp(0.1, 50.0),
+        co2ReductionKg: (co2Kg * 0.85).clamp(0.5, 50.0),
+        percentageReduction: 85.0,
+        explanation: 'Switching to clean renewable generation cuts household power emissions drastically.',
+      );
+    } else if (cat.contains('food') || cat.contains('diet')) {
+      return AlternativeSuggestion(
+        title: 'Adopt Plant-Forward Meals',
+        category: 'food',
+        alternativeType: 'plant_based',
+        estimatedCo2Kg: (co2Kg * 0.35).clamp(0.2, 20.0),
+        co2ReductionKg: (co2Kg * 0.65).clamp(0.5, 25.0),
+        percentageReduction: 65.0,
+        explanation: 'Plant-based ingredients have drastically lower land and carbon intensity than meat.',
+      );
+    } else if (cat.contains('waste')) {
+      return AlternativeSuggestion(
+        title: 'Segregate for Polymer Recycling & Compost',
+        category: 'waste',
+        alternativeType: 'recycling',
+        estimatedCo2Kg: (co2Kg * 0.2).clamp(0.1, 10.0),
+        co2ReductionKg: (co2Kg * 0.8).clamp(0.3, 15.0),
+        percentageReduction: 80.0,
+        explanation: 'Diverting organic and polymer waste from landfills eliminates fugitive methane emissions.',
+      );
+    } else {
+      return AlternativeSuggestion(
+        title: 'Choose Circular & Refurbished Goods',
+        category: 'shopping',
+        alternativeType: 'circular',
+        estimatedCo2Kg: (co2Kg * 0.3).clamp(0.1, 50.0),
+        co2ReductionKg: (co2Kg * 0.7).clamp(0.5, 50.0),
+        percentageReduction: 70.0,
+        explanation: 'Extending product lifecycles directly prevents embodied manufacturing emissions.',
+      );
+    }
+  }
+
   Future<void> _submitActivity() async {
     final user = ref.read(authStateProvider).value;
-    if (_selectedCategory == null || _selectedActivity == null) return;
+    final activitiesToLog = _isSingleChoice
+        ? (_selectedActivity != null ? [_selectedActivity!] : <Map<String, dynamic>>[])
+        : _selectedActivitiesMap.values.toList();
+
+    if (activitiesToLog.isEmpty || _selectedCategory == null) return;
 
     setState(() => _isSubmitting = true);
 
     try {
       final apiService = ref.read(apiServiceProvider);
-      final res = await apiService.logActivity(
-        category: _selectedCategory!.toLowerCase(),
-        activityType: _selectedActivity!['name'] as String,
-        quantity: _quantity,
-        unit: _selectedActivity!['unit'] as String,
-      );
+      double totalCo2 = 0.0;
+      int totalPointsDelta = 0;
+      final List<AlternativeSuggestion> collectedAlternatives = [];
+      final List<String> activityTitles = [];
 
-      final int pointsDelta = res.ecoPointsDelta != 0
-          ? res.ecoPointsDelta
-          : _calculatePointsDelta(
-              category: _selectedCategory!,
-              activityName: _selectedActivity!['name'] as String,
-              quantity: _quantity,
-              co2Kg: res.activity.co2Kg,
-            );
+      for (final act in activitiesToLog) {
+        final actName = act['name'] as String;
+        final unit = act['unit'] as String;
+        final qty = _activityQuantities[actName] ?? _quantity;
+        final factor = (act['co2Factor'] as num?)?.toDouble() ?? 0.15;
+        final itemCo2 = qty * factor;
+        final itemPoints = _calculatePointsDelta(
+          category: _selectedCategory!,
+          activityName: actName,
+          quantity: qty,
+          co2Kg: itemCo2,
+        );
+
+        totalCo2 += itemCo2;
+        totalPointsDelta += itemPoints;
+        activityTitles.add(qty % 1 == 0 ? '$actName (${qty.toInt()} $unit)' : '$actName (${qty.toStringAsFixed(1)} $unit)');
+
+        try {
+          final res = await apiService.logActivity(
+            category: _selectedCategory!.toLowerCase(),
+            activityType: actName,
+            quantity: qty,
+            unit: unit,
+          );
+          if (res.alternatives.isNotEmpty) {
+            collectedAlternatives.addAll(res.alternatives);
+          }
+        } catch (_) {
+          // offline / direct firestore fallback
+        }
+      }
 
       // Update Firestore user profile ecoPoints (clamped at 0 minimum)
       if (user != null) {
@@ -299,22 +453,33 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
           final snap = await userRef.get();
           if (snap.exists && snap.data() != null) {
             final curr = (snap.data()!['ecoPoints'] as num?)?.toInt() ?? 50;
-            final updated = (curr + pointsDelta).clamp(0, 999999);
+            final updated = (curr + totalPointsDelta).clamp(0, 999999);
             await userRef.update({'ecoPoints': updated});
           }
         } catch (_) {}
       }
 
+      if (collectedAlternatives.isEmpty) {
+        collectedAlternatives.add(_getDefaultAlternative(_selectedCategory!, totalCo2));
+      }
+
       setState(() {
-        _analysisResult = res.ecoPointsDelta != 0
-            ? res
-            : ActivityAnalysisResult(
-                activity: res.activity,
-                formulaUsed: res.formulaUsed,
-                ecoPointsDelta: pointsDelta,
-                isPositive: pointsDelta > 0,
-                alternatives: res.alternatives,
-              );
+        _analysisResult = ActivityAnalysisResult(
+          activity: ActivityRecord(
+            activityId: 'act_${DateTime.now().millisecondsSinceEpoch}',
+            userId: user?.uid ?? 'guest_user',
+            category: _selectedCategory!.toLowerCase(),
+            activityType: activityTitles.join(', '),
+            quantity: activitiesToLog.length.toDouble(),
+            unit: activitiesToLog.length > 1 ? 'activities' : (activitiesToLog.first['unit'] as String),
+            co2Kg: totalCo2,
+            createdAt: DateTime.now(),
+          ),
+          formulaUsed: 'IPCC Standard Emission Factors',
+          ecoPointsDelta: totalPointsDelta,
+          isPositive: totalPointsDelta > 0,
+          alternatives: collectedAlternatives,
+        );
         _currentStep = 3; // Move to Celebration Screen!
       });
 
@@ -325,14 +490,26 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
       }
     } catch (e) {
       // Graceful fallback for offline / mock calculation
-      final factor = (_selectedActivity!['co2Factor'] as num?)?.toDouble() ?? 0.15;
-      final calcCo2 = _quantity * factor;
-      final pointsDelta = _calculatePointsDelta(
-        category: _selectedCategory!,
-        activityName: _selectedActivity!['name'] as String,
-        quantity: _quantity,
-        co2Kg: calcCo2,
-      );
+      double totalCo2 = 0.0;
+      int totalPointsDelta = 0;
+      final List<String> activityTitles = [];
+
+      for (final act in activitiesToLog) {
+        final actName = act['name'] as String;
+        final unit = act['unit'] as String;
+        final qty = _activityQuantities[actName] ?? _quantity;
+        final factor = (act['co2Factor'] as num?)?.toDouble() ?? 0.15;
+        final itemCo2 = qty * factor;
+        final itemPoints = _calculatePointsDelta(
+          category: _selectedCategory!,
+          activityName: actName,
+          quantity: qty,
+          co2Kg: itemCo2,
+        );
+        totalCo2 += itemCo2;
+        totalPointsDelta += itemPoints;
+        activityTitles.add(qty % 1 == 0 ? '$actName (${qty.toInt()} $unit)' : '$actName (${qty.toStringAsFixed(1)} $unit)');
+      }
 
       // Update Firestore user profile ecoPoints (clamped at 0 minimum)
       if (user != null) {
@@ -341,7 +518,7 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
           final snap = await userRef.get();
           if (snap.exists && snap.data() != null) {
             final curr = (snap.data()!['ecoPoints'] as num?)?.toInt() ?? 50;
-            final updated = (curr + pointsDelta).clamp(0, 999999);
+            final updated = (curr + totalPointsDelta).clamp(0, 999999);
             await userRef.update({'ecoPoints': updated});
           }
         } catch (_) {}
@@ -353,27 +530,17 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             activityId: 'act_${DateTime.now().millisecondsSinceEpoch}',
             userId: user?.uid ?? 'guest_user',
             category: _selectedCategory!.toLowerCase(),
-            activityType: _selectedActivity!['name'] as String,
-            quantity: _quantity,
-            unit: _selectedActivity!['unit'] as String,
-            co2Kg: calcCo2,
+            activityType: activityTitles.join(', '),
+            quantity: activitiesToLog.length.toDouble(),
+            unit: activitiesToLog.length > 1 ? 'activities' : (activitiesToLog.first['unit'] as String),
+            co2Kg: totalCo2,
             createdAt: DateTime.now(),
           ),
           formulaUsed: 'IPCC Standard Emission Factors',
-          ecoPointsDelta: pointsDelta,
-          isPositive: pointsDelta > 0,
+          ecoPointsDelta: totalPointsDelta,
+          isPositive: totalPointsDelta > 0,
           alternatives: [
-            AlternativeSuggestion(
-              title: _selectedCategory == 'Transport'
-                  ? 'Switch to Metro Commute'
-                  : 'Clean Energy Shift',
-              category: _selectedCategory ?? 'general',
-              alternativeType: 'transit',
-              estimatedCo2Kg: calcCo2 * 0.25,
-              co2ReductionKg: (calcCo2 * 0.75).clamp(0.2, 50.0),
-              percentageReduction: 75.0,
-              explanation: 'Taking mass transit reduces urban congestion and cuts emissions drastically.',
-            ),
+            _getDefaultAlternative(_selectedCategory!, totalCo2),
           ],
         );
         _currentStep = 3;
@@ -389,10 +556,17 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
   }
 
   void _handleBack() {
+    if (widget.initialCategory != null) {
+      // From any stage (Transport, Energy, Food, Waste, etc.):
+      // Tapping back returns DIRECTLY to the Home screen!
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+
     if (_currentStep > 0 && _currentStep < 3) {
       setState(() => _currentStep--);
     } else {
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 
@@ -400,46 +574,53 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
   Widget build(BuildContext context) {
     final double stepProgress = ((_currentStep + 1) / 4).clamp(0.0, 1.0);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(_currentStep == 0 || _currentStep == 3 ? Icons.close_rounded : Icons.arrow_back_rounded),
-          color: AppTheme.duoText,
-          iconSize: 28,
-          onPressed: _handleBack,
-        ),
-        title: EcoProgressBar(
-          progress: stepProgress,
-          height: 14,
-          fillColor: AppTheme.duoGreen,
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: const Row(
-              children: [
-                Text('🌱', style: TextStyle(fontSize: 18)),
-                SizedBox(width: 4),
-                Text('LESSON', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoGreenDark)),
-              ],
-            ),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(_currentStep == 0 || _currentStep == 3 ? Icons.close_rounded : Icons.arrow_back_rounded),
+            color: AppTheme.duoText,
+            iconSize: 28,
+            onPressed: _handleBack,
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _buildCurrentStepView(),
+          title: EcoProgressBar(
+            progress: stepProgress,
+            height: 14,
+            fillColor: AppTheme.duoGreen,
+          ),
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              child: const Row(
+                children: [
+                  Text('🌱', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 4),
+                  Text('LESSON', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoGreenDark)),
+                ],
               ),
             ),
-            if (_currentStep < 3) _buildBottomActionBar(),
           ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _buildCurrentStepView(),
+                ),
+              ),
+              if (_currentStep < 3) _buildBottomActionBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -545,7 +726,7 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     );
   }
 
-  // STEP 2: Select Specific Activity
+  // STEP 2: Select Specific Activity (Radio for Transport, Checkboxes for others)
   Widget _buildStepActivitySelection() {
     final list = _activitiesMap[_selectedCategory] ?? _activitiesMap['Transport']!;
 
@@ -560,25 +741,64 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppTheme.duoText),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Select the exact vehicle, appliance or material you used',
-            style: TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+          Text(
+            _isSingleChoice
+                ? 'Select your primary travel vehicle for today'
+                : 'Select all actions and sustainable habits you practiced',
+            style: const TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          // Selection mode badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _isSingleChoice
+                  ? AppTheme.duoBlueLight.withValues(alpha: 0.5)
+                  : AppTheme.duoGreenLight.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _isSingleChoice ? AppTheme.duoBlue : AppTheme.duoGreen,
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _isSingleChoice ? '○' : '☑',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    color: _isSingleChoice ? AppTheme.duoBlueDark : AppTheme.duoGreenDark,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isSingleChoice
+                      ? 'SINGLE SELECTION (RADIO)'
+                      : 'MULTIPLE SELECTIONS ALLOWED',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                    color: _isSingleChoice ? AppTheme.duoBlueDark : AppTheme.duoGreenDark,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           _buildMascotFeedback(),
           const SizedBox(height: 8),
           ...list.map((act) {
-            final isSelected = _selectedActivity?['name'] == act['name'];
+            final bool isSelected = _isSingleChoice
+                ? ((_selectedActivity != null) && (_selectedActivity!['name'] == act['name']))
+                : _selectedActivitiesMap.containsKey(act['name']);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedActivity = act;
-                    _quantity = (act['defaultQty'] as num).toDouble();
-                  });
-                },
+                onTap: () => _toggleActivitySelection(act),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 80),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -619,21 +839,48 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                           ),
                         ),
                       ),
-                      Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected ? AppTheme.duoGreen : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected ? AppTheme.duoGreen : AppTheme.duoGrayDark,
-                            width: 2,
+                      // Single choice: circular radio; Multi choice: rounded square checkbox
+                      if (_isSingleChoice)
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected ? AppTheme.duoGreen : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected ? AppTheme.duoGreen : AppTheme.duoGrayDark,
+                              width: 2.5,
+                            ),
                           ),
+                          child: isSelected
+                              ? Center(
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        )
+                      else
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected ? AppTheme.duoGreen : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected ? AppTheme.duoGreen : AppTheme.duoGrayDark,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                              : null,
                         ),
-                        child: isSelected
-                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                            : null,
-                      ),
                     ],
                   ),
                 ),
@@ -645,24 +892,152 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     );
   }
 
-  // STEP 3: Enter Quantity
+  // STEP 3: Enter Quantity (Single or Multi-item adjustment)
   Widget _buildStepQuantityInput() {
-    final unit = _selectedActivity?['unit'] as String? ?? 'units';
-    final presets = (_selectedActivity?['presets'] as List<dynamic>?)?.cast<double>() ?? [5.0, 10.0, 25.0, 50.0];
+    final selectedActs = _isSingleChoice
+        ? (_selectedActivity != null ? [_selectedActivity!] : <Map<String, dynamic>>[])
+        : _selectedActivitiesMap.values.toList();
+
+    if (selectedActs.length > 1) {
+      // Multiple items selected: Render adjuster per selected activity
+      return SingleChildScrollView(
+        key: const ValueKey('step_quantity_multi'),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Quantities Recorded',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppTheme.duoText),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Customize usage for each of your ${selectedActs.length} selected activities',
+              style: const TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            _buildMascotFeedback(),
+            const SizedBox(height: 8),
+            ...selectedActs.map((act) {
+              final name = act['name'] as String;
+              final unit = act['unit'] as String;
+              final currentQty = _activityQuantities[name] ?? (act['defaultQty'] as num).toDouble();
+              final presets = (act['presets'] as List<dynamic>?)?.cast<double>() ?? [1.0, 2.0, 5.0, 10.0];
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.duoGray, width: 2),
+                  boxShadow: const [
+                    BoxShadow(color: AppTheme.duoGray, offset: Offset(0, 3)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(act['emoji'] as String, style: const TextStyle(fontSize: 24)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.duoText),
+                          ),
+                        ),
+                        Text(
+                          currentQty % 1 == 0 ? '${currentQty.toInt()} $unit' : '${currentQty.toStringAsFixed(1)} $unit',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.duoGreenDark),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildStepperButton(
+                          icon: Icons.remove_rounded,
+                          onTap: () {
+                            if (currentQty > 0.5) {
+                              setState(() {
+                                final updated = (currentQty - 1).clamp(0.5, 500.0);
+                                _activityQuantities[name] = updated;
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 24),
+                        _buildStepperButton(
+                          icon: Icons.add_rounded,
+                          onTap: () {
+                            setState(() {
+                              final updated = (currentQty + 1).clamp(0.5, 500.0);
+                              _activityQuantities[name] = updated;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: presets.map((p) {
+                        final isMatch = currentQty == p;
+                        return GestureDetector(
+                          onTap: () => setState(() => _activityQuantities[name] = p),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isMatch ? AppTheme.duoGreen : AppTheme.duoGrayLight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isMatch ? AppTheme.duoGreenDark : AppTheme.duoGray,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              '${p.toInt()} $unit',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: isMatch ? Colors.white : AppTheme.duoText,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    // Single item selected: Big tactile counter display
+    final act = selectedActs.isNotEmpty ? selectedActs.first : _selectedActivity;
+    final unit = act?['unit'] as String? ?? 'units';
+    final presets = (act?['presets'] as List<dynamic>?)?.cast<double>() ?? [5.0, 10.0, 25.0, 50.0];
 
     return SingleChildScrollView(
-      key: const ValueKey('step_quantity'),
+      key: const ValueKey('step_quantity_single'),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'How much did you record?',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppTheme.duoText),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppTheme.duoText),
           ),
           const SizedBox(height: 6),
           Text(
-            'Quantity in $unit for ${_selectedActivity?['name']}',
+            'Quantity in $unit for ${act?['name'] ?? 'selected activity'}',
             style: const TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 14),
@@ -712,7 +1087,10 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                 icon: Icons.remove_rounded,
                 onTap: () {
                   if (_quantity > 1) {
-                    setState(() => _quantity = (_quantity - 1).clamp(0.5, 500.0));
+                    setState(() {
+                      _quantity = (_quantity - 1).clamp(0.5, 500.0);
+                      if (act != null) _activityQuantities[act['name'] as String] = _quantity;
+                    });
                   }
                 },
               ),
@@ -720,7 +1098,10 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
               _buildStepperButton(
                 icon: Icons.add_rounded,
                 onTap: () {
-                  setState(() => _quantity = (_quantity + 1).clamp(0.5, 500.0));
+                  setState(() {
+                    _quantity = (_quantity + 1).clamp(0.5, 500.0);
+                    if (act != null) _activityQuantities[act['name'] as String] = _quantity;
+                  });
                 },
               ),
             ],
@@ -740,7 +1121,10 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             children: presets.map((p) {
               final isMatch = _quantity == p;
               return GestureDetector(
-                onTap: () => setState(() => _quantity = p),
+                onTap: () => setState(() {
+                  _quantity = p;
+                  if (act != null) _activityQuantities[act['name'] as String] = p;
+                }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   decoration: BoxDecoration(
@@ -871,7 +1255,8 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'You recorded ${_selectedActivity?['name']}',
+              'You recorded ${_analysisResult?.activity.activityType ?? _selectedActivity?['name'] ?? 'your sustainability action'}',
+              textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
@@ -951,47 +1336,66 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
 
             const SizedBox(height: 24),
 
-            // Better Choice Circular Recommendation Card
-            if (alternatives.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppTheme.duoBlueLight.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: AppTheme.duoBlue, width: 2),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
+            // DEDICATED HIGHLIGHTED AI RECOMMENDATION CARD
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppTheme.duoBlueLight.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: AppTheme.duoBlue, width: 2.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppTheme.duoBlueDark,
+                    offset: Offset(0, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('🐻❄️', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'AI RECOMMENDATION',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: AppTheme.duoBlueDark,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (alternatives.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppTheme.duoBlue,
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppTheme.duoGreenLight,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Text(
-                            '🌱 BETTER CHOICE',
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.white, letterSpacing: 0.6),
+                          child: Text(
+                            '-${alternatives.first.percentageReduction.toInt()}% CO₂',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.duoGreenDark,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          '-${alternatives.first.percentageReduction.toInt()}% CO₂',
-                          style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.duoGreenDark, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (alternatives.isNotEmpty) ...[
                     Text(
                       alternatives.first.title,
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.duoText),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.duoText),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       alternatives.first.explanation,
-                      style: const TextStyle(fontSize: 13, color: AppTheme.duoSubtext),
+                      style: const TextStyle(fontSize: 13, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
                     Container(
@@ -1004,17 +1408,20 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Estimated Saving:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.duoText)),
+                          const Text(
+                            'Potential CO₂ reduction:',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.duoText),
+                          ),
                           Text(
-                            '~${alternatives.first.co2ReductionKg.toStringAsFixed(1)} kg CO₂',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.duoGreenDark),
+                            '~${alternatives.first.co2ReductionKg.toStringAsFixed(1)} kg',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.duoGreenDark),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     PrimaryGameButton(
-                      text: 'TRY THIS ALTERNATIVE',
+                      text: 'TRY THIS',
                       color: GameButtonColor.blue,
                       height: 44,
                       fontSize: 13,
@@ -1030,16 +1437,28 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                         );
                       },
                     ),
+                  ] else ...[
+                    // Graceful empty state when already low carbon
+                    const Text(
+                      'Outstanding Eco Choice!',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.duoText),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Your actions generate minimal carbon. You're keeping my Arctic home cool and frozen! ❄️",
+                      style: TextStyle(fontSize: 13, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+                    ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
+
+            const SizedBox(height: 24),
 
             PrimaryGameButton(
               text: 'CONTINUE',
               color: GameButtonColor.green,
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
             ),
           ],
         ),
@@ -1052,8 +1471,8 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     final bool canContinue = _currentStep == 0
         ? _selectedCategory != null
         : _currentStep == 1
-            ? _selectedActivity != null
-            : _quantity > 0;
+            ? _hasSelection
+            : true;
 
     return Container(
       padding: const EdgeInsets.all(16),
