@@ -28,6 +28,7 @@ class AppRoutes {
   static const String activityHistory = '/activity-history';
   static const String recommendations = '/recommendations';
   static const String whatIf = '/what-if';
+  static const String whatIfSimulator = whatIf;
   static const String recycling = '/recycling';
   static const String leaderboard = '/leaderboard';
   static const String appSettings = '/settings';

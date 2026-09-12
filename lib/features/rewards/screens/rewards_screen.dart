@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
+import '../../../core/widgets/eco_progress_bar.dart';
+import '../../../core/widgets/primary_game_button.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/reward_item.dart';
 
-/// Rewards Screen (Tab 3 in Bottom Navigation).
-/// Shows live user eco points, streaks, badges, completed action logs,
-/// with direct access to the community leaderboard and pull-to-refresh.
+/// Duolingo-styled Rewards Screen showing live eco points, streaks, level progression,
+/// collectible badges, and direct navigation to the community leaderboard.
 class RewardsScreen extends ConsumerWidget {
   const RewardsScreen({super.key});
 
@@ -17,15 +18,24 @@ class RewardsScreen extends ConsumerWidget {
     final profileAsync = user != null ? ref.watch(userProfileProvider(user.uid)) : null;
 
     final livePoints = profileAsync?.value?.ecoPoints ?? 420;
-    final liveStreak = profileAsync?.value?.streak ?? 5;
+    final liveStreak = profileAsync?.value?.streak ?? 7;
     final reward = RewardSummary.mockSummary;
+    final level = (livePoints / 250).floor() + 1;
+    final nextLevelPoints = level * 250;
+    final levelProgress = (livePoints % 250) / 250.0;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Eco Rewards & Milestones'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'ECO REWARDS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8, fontSize: 18),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: AppTheme.duoSubtext),
             tooltip: 'Refresh Rewards',
             onPressed: () {
               if (user != null) {
@@ -37,7 +47,7 @@ class RewardsScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          color: AppTheme.primaryGreen,
+          color: AppTheme.duoGreen,
           onRefresh: () async {
             if (user != null) {
               ref.invalidate(userProfileProvider(user.uid));
@@ -50,226 +60,222 @@ class RewardsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Points & Level Banner
-                Card(
-                  color: AppTheme.primaryGreen,
-                  elevation: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
+                // 1. Points & Level 3D Banner
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.duoGreen,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: const [
+                      BoxShadow(color: AppTheme.duoGreenDark, offset: Offset(0, 5)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'LEVEL $level: ${reward.levelTitle.toUpperCase()}',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              const Text('🔥', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$liveStreak-DAY STREAK',
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('💎', style: TextStyle(fontSize: 36)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$livePoints',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 50,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'Total Eco Points Earned',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 18),
+                      // Progress to next level
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Progress to Level ${level + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              Text('$livePoints / $nextLevelPoints pts', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          EcoProgressBar(
+                            progress: levelProgress.clamp(0.05, 1.0),
+                            height: 12,
+                            fillColor: AppTheme.duoYellow,
+                            trackColor: Colors.black12,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 2. Leaderboard Navigation Banner
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.duoYellowLight.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.duoYellow, width: 2),
+                      boxShadow: const [
+                        BoxShadow(color: AppTheme.duoYellowDark, offset: Offset(0, 3)),
+                      ],
+                    ),
+                    child: Row(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Level ${reward.level}: ${reward.levelTitle}',
-                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 18),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$liveStreak-Day Streak',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ],
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.duoYellow,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text('🏆', style: TextStyle(fontSize: 22)),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '$livePoints',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -1,
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'COMMUNITY LEADERBOARD',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.duoYellowDark),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Compete in Emerald League & win bonus points!',
+                                style: TextStyle(fontSize: 11, color: AppTheme.duoText, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
                         ),
-                        const Text(
-                          'Total Eco Points Earned',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                        const SizedBox(height: 16),
-                        // Progress to next level
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Progress to Level 4', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                Text('$livePoints / 800 pts', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: (livePoints / 800).clamp(0.0, 1.0),
-                                backgroundColor: Colors.white24,
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
-                                minHeight: 6,
-                              ),
-                            ),
-                          ],
-                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.duoYellowDark),
                       ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 16),
-
-                // Leaderboard Direct Navigation Card
-                Card(
-                  color: Colors.amber.shade50,
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.amber.shade200),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Colors.amber.shade100,
-                            radius: 20,
-                            child: Icon(Icons.emoji_events, color: Colors.amber.shade800, size: 22),
-                          ),
-                          const SizedBox(width: 14),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Community Leaderboard',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'View your community ranking & CO2 savings',
-                                  style: TextStyle(fontSize: 11, color: Colors.black54),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black45),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: 24),
 
-                // Badges Grid Section
+                // 3. Badges Collection Header
                 const Text(
-                  'Circular Badges & Achievements',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                  'UNLOCKED MILESTONE BADGES',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoSubtext, letterSpacing: 0.8),
                 ),
                 const SizedBox(height: 12),
 
+                // Badges Grid
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 0.85,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.25,
                   ),
                   itemCount: reward.badges.length,
                   itemBuilder: (context, index) {
                     final badge = reward.badges[index];
-                    return Card(
-                      color: badge.isUnlocked ? Colors.white : Colors.grey.shade100,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: badge.isUnlocked ? AppTheme.lightGreen : Colors.grey.shade300,
-                              child: Icon(
-                                badge.icon,
-                                color: badge.isUnlocked ? AppTheme.primaryGreen : Colors.grey.shade600,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              badge.title,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: badge.isUnlocked ? AppTheme.darkText : Colors.grey,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              badge.isUnlocked ? (badge.earnedDate ?? 'Earned') : 'Locked',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: badge.isUnlocked ? Colors.green.shade800 : Colors.grey,
-                              ),
-                            ),
-                          ],
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: badge.isUnlocked ? Colors.white : AppTheme.duoGrayLight,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: badge.isUnlocked ? AppTheme.duoYellow : AppTheme.duoGray,
+                          width: 2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: badge.isUnlocked ? AppTheme.duoYellowDark.withValues(alpha: 0.4) : AppTheme.duoGray,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            badge.icon,
+                            size: 28,
+                            color: badge.isUnlocked ? AppTheme.duoYellowDark : AppTheme.duoSubtext,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            badge.title,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: badge.isUnlocked ? AppTheme.duoText : AppTheme.duoSubtext,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            badge.isUnlocked ? 'Unlocked ✓' : 'In Progress',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: badge.isUnlocked ? AppTheme.duoGreenDark : AppTheme.duoSubtext,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Completed Actions Log
-                const Text(
-                  'Recent Completed Actions',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                // 4. Action CTA
+                PrimaryGameButton(
+                  text: 'VIEW LEADERBOARD',
+                  color: GameButtonColor.yellow,
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.leaderboard),
                 ),
-                const SizedBox(height: 10),
-
-                ...reward.recentActions.map((action) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        dense: true,
-                        leading: const CircleAvatar(
-                          radius: 14,
-                          backgroundColor: AppTheme.lightGreen,
-                          child: Icon(Icons.check, size: 16, color: AppTheme.primaryGreen),
-                        ),
-                        title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        subtitle: Text(action.date, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '+${action.points} pts',
-                            style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ),
-                    )),
+                const SizedBox(height: 16),
               ],
             ),
           ),

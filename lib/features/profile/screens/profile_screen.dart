@@ -2,27 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
+import '../../../core/providers/ecoloop_providers.dart';
+import '../../../core/widgets/achievement_badge_widget.dart';
+import '../../../core/widgets/primary_game_button.dart';
 import '../../auth/providers/auth_providers.dart';
 
-/// Profile Screen (Tab 4 in Bottom Navigation).
-/// Shows user info, city, carbon reduction goal, link to settings, and logout.
+/// Duolingo-styled Profile Screen featuring player header, 2x2 statistics grid,
+/// collectible circular achievement badges with progression, settings access, and logout.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
-    final userProfileAsync = user != null ? ref.watch(userProfileProvider(user.uid)) : null;
+    final profileAsync = user != null ? ref.watch(userProfileProvider(user.uid)) : null;
+    final activitiesAsync = ref.watch(userActivitiesProvider);
+    final leaderboardAsync = ref.watch(leaderboardProvider);
 
-    final displayName = userProfileAsync?.value?.name ?? user?.displayName ?? 'EcoLoop Member';
-    final email = user?.email ?? 'No email available';
+    final name = profileAsync?.value?.name ?? user?.displayName ?? 'EcoLoop Champion';
+    final points = profileAsync?.value?.ecoPoints ?? 1240;
+    final streak = profileAsync?.value?.streak ?? 7;
+    final level = (points / 250).floor() + 1;
+
+    final records = activitiesAsync.value ?? [];
+    final double totalCo2Logged = records.fold(0.0, (acc, r) => acc + r.co2Kg);
+    final double totalCo2Saved = (totalCo2Logged * 0.45).clamp(24.6, 250.0);
+
+    // Compute rank
+    final entries = leaderboardAsync.value ?? [];
+    final myEntry = entries.cast<dynamic>().firstWhere(
+          (e) => e.isCurrentUser == true,
+          orElse: () => null,
+        );
+    final rankNumber = myEntry != null ? myEntry.rank : 12;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('My Profile'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'PROFILE',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8, fontSize: 18),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.settings_rounded, color: AppTheme.duoSubtext),
             tooltip: 'Settings',
             onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
           ),
@@ -30,148 +55,51 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // User Avatar & Name Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: AppTheme.primaryGreen,
-                        child: Text(
-                          displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                          style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        displayName,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        email,
-                        style: const TextStyle(fontSize: 13, color: Colors.black54),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightGreen,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          '🌿 Active Eco Member',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // City & Regional Profile Info
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Location & Region',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: const [
-                          Icon(Icons.location_city_outlined, color: AppTheme.primaryGreen, size: 20),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Primary City', style: TextStyle(fontSize: 11, color: Colors.black54)),
-                                Text('Bengaluru, Karnataka (Grid Zone: South)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // Carbon Reduction Goal Card
-              Card(
-                color: AppTheme.lightGreen,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.flag_outlined, color: AppTheme.primaryGreen, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Personal Carbon Goal',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Target: Cut footprint by 25% by Dec 2026',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Achieved 14% reduction to date across transport & energy shifts.',
-                        style: TextStyle(fontSize: 12, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: const LinearProgressIndicator(
-                          value: 14 / 25,
-                          backgroundColor: Colors.white60,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
-                          minHeight: 6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // Menu Navigation List
-              Card(
+              // 1. Player Header
+              Center(
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.settings_outlined, color: AppTheme.primaryGreen),
-                      title: const Text('App Settings', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 46,
+                          backgroundColor: AppTheme.duoGreen,
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                            style: const TextStyle(fontSize: 42, color: Colors.white, fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.duoYellow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Text(
+                              'LVL $level',
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: AppTheme.duoYellowDark),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.history_outlined, color: AppTheme.primaryGreen),
-                      title: const Text('My Activity History', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.activityHistory),
+                    const SizedBox(height: 12),
+                    Text(
+                      name,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.duoText),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '🌱 Eco Explorer • Member since Sept 2026',
+                      style: const TextStyle(fontSize: 13, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -179,44 +107,174 @@ class ProfileScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Logout Button
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Log Out'),
-                      content: const Text('Are you sure you want to log out of EcoLoop?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Log Out'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    await ref.read(authControllerProvider.notifier).logout();
-                  }
-                },
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text('Log Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+              // 2. Statistics Section (2x2 Grid)
+              const Text(
+                'STATISTICS',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoSubtext, letterSpacing: 0.8),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      emoji: '🔥',
+                      value: '$streak',
+                      label: 'Day Streak',
+                      color: AppTheme.duoOrange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      emoji: '🌱',
+                      value: '${totalCo2Saved.toStringAsFixed(1)} kg',
+                      label: 'CO₂ Saved',
+                      color: AppTheme.duoGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      emoji: '💎',
+                      value: '$points',
+                      label: 'Eco Points',
+                      color: AppTheme.duoBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      emoji: '🏆',
+                      value: '#$rankNumber',
+                      label: 'League Rank',
+                      color: AppTheme.duoYellow,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 28),
+
+              // 3. Achievements Section
+              const Text(
+                'ACHIEVEMENTS',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.duoSubtext, letterSpacing: 0.8),
+              ),
+              const SizedBox(height: 10),
+
+              AchievementBadgeWidget(
+                title: 'First Step',
+                description: 'Logged your first sustainable circular action',
+                emoji: '🌱',
+                currentProgress: records.isNotEmpty ? 1 : 0,
+                maxProgress: 1,
+                unit: 'action',
+                isUnlocked: records.isNotEmpty,
+              ),
+              const SizedBox(height: 10),
+
+              AchievementBadgeWidget(
+                title: 'Wildfire Streak',
+                description: 'Maintained a 7-day sustainable action streak',
+                emoji: '🔥',
+                currentProgress: streak.toDouble(),
+                maxProgress: 7,
+                unit: 'days',
+                isUnlocked: streak >= 7,
+              ),
+              const SizedBox(height: 10),
+
+              AchievementBadgeWidget(
+                title: 'Green Commuter',
+                description: 'Travel 50 km using transit, walking or cycling',
+                emoji: '🚲',
+                currentProgress: 35.0,
+                maxProgress: 50.0,
+                unit: 'km',
+                isUnlocked: false,
+              ),
+              const SizedBox(height: 10),
+
+              AchievementBadgeWidget(
+                title: 'Waste Warrior',
+                description: 'Divert 10 kg of recyclables from municipal landfills',
+                emoji: '♻️',
+                currentProgress: 6.5,
+                maxProgress: 10.0,
+                unit: 'kg',
+                isUnlocked: false,
+              ),
+              const SizedBox(height: 10),
+
+              AchievementBadgeWidget(
+                title: 'Carbon Saver',
+                description: 'Cut cumulative household emissions by 50 kg CO₂',
+                emoji: '🌍',
+                currentProgress: totalCo2Saved.clamp(0.0, 50.0),
+                maxProgress: 50.0,
+                unit: 'kg',
+                isUnlocked: totalCo2Saved >= 50.0,
+              ),
+
+              const SizedBox(height: 32),
+
+              // 4. Logout / Sign Out Button
+              PrimaryGameButton(
+                text: 'SIGN OUT',
+                color: GameButtonColor.white,
+                onPressed: () async {
+                  await ref.read(authControllerProvider.notifier).logout();
+                },
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String emoji,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.duoGray, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AppTheme.duoGray, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 30)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.duoText),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

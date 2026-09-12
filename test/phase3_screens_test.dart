@@ -29,58 +29,52 @@ void main() {
     testWidgets('Renders all 5 bottom navigation destinations and switches tabs', (tester) async {
       await tester.pumpWidget(createTestWidget(const MainNavigationScaffold()));
 
-      // Check destinations
+      // Check Duolingo navigation destinations
       expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Activity'), findsOneWidget);
-      expect(find.text('Actions'), findsOneWidget);
-      expect(find.text('Rewards'), findsOneWidget);
+      expect(find.text('Map'), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Rank'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
 
-      // Tap Activity tab
-      await tester.tap(find.text('Activity'));
-      await tester.pumpAndSettle();
-      expect(find.text('Activity & Impact Hub'), findsOneWidget);
+      // Tap Map tab
+      await tester.tap(find.text('Map'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('ECO MAP'), findsOneWidget);
 
-      // Tap Actions tab
-      await tester.tap(find.text('Actions'));
-      await tester.pumpAndSettle();
-      expect(find.text('Circular Actions & Tools'), findsOneWidget);
-
-      // Tap Rewards tab
-      await tester.tap(find.text('Rewards'));
-      await tester.pumpAndSettle();
-      expect(find.text('Eco Rewards & Milestones'), findsOneWidget);
+      // Tap Rank tab
+      await tester.tap(find.text('Rank'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('LEADERBOARD'), findsOneWidget);
 
       // Tap Profile tab
       await tester.tap(find.text('Profile'));
-      await tester.pumpAndSettle();
-      expect(find.text('My Profile'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('PROFILE'), findsOneWidget);
     });
   });
 
   group('AddActivityScreen Tests', () {
-    testWidgets('Renders 4 tabs and validates required inputs', (tester) async {
+    testWidgets('Renders interactive lesson steps and advances to activity selection', (tester) async {
       await tester.pumpWidget(createTestWidget(const AddActivityScreen()));
 
+      expect(find.text('What did you do today?'), findsOneWidget);
       expect(find.text('Transport'), findsOneWidget);
       expect(find.text('Energy'), findsOneWidget);
-      expect(find.text('Shopping'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
       expect(find.text('Waste'), findsOneWidget);
 
-      // Switch to Energy tab
-      await tester.tap(find.text('Energy'));
+      // Select Transport
+      await tester.tap(find.text('Transport'));
       await tester.pumpAndSettle();
-      expect(find.text('Household Energy'), findsOneWidget);
 
-      // Switch to Shopping tab
-      await tester.tap(find.text('Shopping'));
+      // Tap CONTINUE button
+      await tester.tap(find.text('CONTINUE'));
       await tester.pumpAndSettle();
-      expect(find.text('Shopping & Goods'), findsOneWidget);
 
-      // Switch to Waste tab
-      await tester.tap(find.text('Waste'));
-      await tester.pumpAndSettle();
-      expect(find.text('Waste Disposal'), findsOneWidget);
+      // Step 2: Activity Selection
+      expect(find.text('Which transport action?'), findsOneWidget);
+      expect(find.text('Solo Petrol Car'), findsOneWidget);
+      expect(find.text('City Bus'), findsOneWidget);
     });
   });
 
@@ -152,9 +146,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Recycling & Circular Hubs'), findsOneWidget);
-      expect(find.text('GreenEarth E-Waste & Battery Drop-Off'), findsOneWidget);
-      expect(find.text('EcoCycle Polymer Recovery Hub'), findsOneWidget);
+      expect(find.text('ECO MAP'), findsOneWidget);
+      expect(find.text('All Hubs'), findsOneWidget);
+      expect(find.text('Recycling'), findsOneWidget);
+      expect(find.text('Transport'), findsOneWidget);
     });
   });
 
