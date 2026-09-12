@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "701293503854",
+    "project_id": "ecoloop-3fd3b",
+    "storage_bucket": "ecoloop-3fd3b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701293503854:android:8798e3abc54b1adf8a8d7f",
+        "android_client_info": {
+          "package_name": "com.hackout.carbonloopapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfqyXZCHw-O7EZgJv-sd0nuD7GUiFQ7zE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
