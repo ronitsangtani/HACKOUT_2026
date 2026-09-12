@@ -104,6 +104,50 @@ void main() {
       expect(find.text('Solo Petrol Car'), findsOneWidget);
       expect(find.text('City Bus'), findsOneWidget);
     });
+
+    testWidgets('Awards positive points for sustainable low-carbon choices (Bicycle)', (tester) async {
+      await tester.pumpWidget(createTestWidget(const AddActivityScreen(initialCategory: 'Transport')));
+      await tester.pumpAndSettle();
+
+      // Step 2: Pick Bicycle / Walking
+      await tester.tap(find.text('Bicycle / Walking'));
+      await tester.pumpAndSettle();
+
+      // Continue to quantity
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+
+      // Step 3: Calculate & Log
+      await tester.tap(find.text('CALCULATE & LOG'));
+      await tester.pumpAndSettle();
+
+      // Verify Celebration Screen awards positive points
+      expect(find.text('SUSTAINABLE CHOICE!'), findsOneWidget);
+      expect(find.text('EARNED'), findsOneWidget);
+      expect(find.textContaining('🌱'), findsWidgets);
+    });
+
+    testWidgets('Applies negative penalty points for excessive carbon choice (Solo Petrol Car)', (tester) async {
+      await tester.pumpWidget(createTestWidget(const AddActivityScreen(initialCategory: 'Transport')));
+      await tester.pumpAndSettle();
+
+      // Step 2: Pick Solo Petrol Car
+      await tester.tap(find.text('Solo Petrol Car'));
+      await tester.pumpAndSettle();
+
+      // Continue to quantity
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+
+      // Step 3: Calculate & Log
+      await tester.tap(find.text('CALCULATE & LOG'));
+      await tester.pumpAndSettle();
+
+      // Verify Celebration Screen displays penalty warning and negative points
+      expect(find.text('HIGH CARBON FOOTPRINT!'), findsOneWidget);
+      expect(find.text('PENALTY'), findsOneWidget);
+      expect(find.textContaining('🔻'), findsWidgets);
+    });
   });
 
   group('CarbonImpactScreen Tests', () {

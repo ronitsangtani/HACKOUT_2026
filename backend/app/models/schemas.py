@@ -103,6 +103,8 @@ class ActivityAnalysisResponse(BaseModel):
     co2Kg: float
     createdAt: str
     formulaUsed: str
+    ecoPointsDelta: int = 0
+    isPositive: bool = True
     alternatives: List[AlternativeSuggestion] = []
 
 

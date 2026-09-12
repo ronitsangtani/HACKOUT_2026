@@ -70,6 +70,125 @@ class CarbonService:
 
         return round(max(0.00, co2), 2), method
 
+    @staticmethod
+    def calculate_points_delta(category: str, activity_type: str, quantity: float, co2_kg: float) -> int:
+        cat = category.lower().strip()
+        act = activity_type.lower().strip()
+
+        # 1. Transport
+        if cat == "transport":
+            if "bicycle" in act or "walking" in act or "cycle" in act:
+                # Zero emission active mobility
+                return 35 + (5 if quantity > 5.0 else 0)
+            elif "metro" in act or "train" in act:
+                # Clean rapid mass transit
+                return 25
+            elif "ev" in act or "electric" in act:
+                # Electric transit
+                return 15
+            elif "bus" in act:
+                # Shared mass transit
+                return 10
+            elif "car" in act or "petrol" in act or "diesel" in act:
+                # Solo fossil fuel vehicle: High carbon penalty
+                penalty = int(15 + (quantity / 2.0))
+                return -min(45, penalty)
+            else:
+                return -10 if co2_kg > 2.0 else 5
+
+        # 2. Energy
+        elif cat == "energy":
+            if "solar" in act or "renewable" in act:
+                # Clean rooftop solar generation
+                return 30
+            elif "electricity" in act:
+                # Conditional grid consumption
+                if quantity <= 8.0:
+                    return 10  # Conservation reward
+                elif quantity <= 15.0:
+                    return 0   # Normal baseline (no points, no penalty)
+                elif quantity <= 30.0:
+                    return -15 # Excessive usage penalty
+                else:
+                    return -30 # Severe waste penalty
+            elif "lpg" in act or "gas" in act:
+                # Fossil fuel cylinder
+                if quantity <= 1.0:
+                    return -10
+                else:
+                    return -25
+            else:
+                return -15 if co2_kg > 5.0 else 5
+
+        # 3. Food / Diet
+        elif cat in ("food", "diet"):
+            if "plant" in act or "vegan" in act or "salad" in act:
+                # Sustainable low-carbon meal
+                return int(25 * min(quantity, 3.0))
+            elif "dairy" in act or "coffee" in act:
+                # Moderate footprint
+                if quantity <= 2.0:
+                    return 5
+                else:
+                    return -10
+            elif "meat" in act or "beef" in act or "chicken" in act or "mutton" in act:
+                # High carbon intensity meal
+                return -int(20 * min(quantity, 3.0))
+            else:
+                return -10 if co2_kg > 2.0 else 10
+
+        # 4. Waste
+        elif cat == "waste":
+            if "compost" in act or "organic" in act:
+                # Methane avoidance composting
+                return 30
+            elif "recycle" in act or "polymer" in act or "segregat" in act:
+                # Material recycling circularity
+                return 25
+            elif "trash" in act or "landfill" in act or "dump" in act:
+                # Unsegregated landfill waste
+                return -20
+            else:
+                return 15 if co2_kg < 0.5 else -15
+
+        # 5. Shopping
+        elif cat in ("shopping", "goods"):
+            if "fashion" in act or "cloth" in act:
+                # Fast fashion penalty
+                return -int(25 * min(quantity, 3.0))
+            elif "electronic" in act or "device" in act or "phone" in act:
+                # New electronic device embodied carbon
+                return -35
+            elif "grocer" in act or "essential" in act or "food" in act:
+                if quantity <= 5.0:
+                    return 10
+                elif quantity <= 10.0:
+                    return 0
+                else:
+                    return -10
+            else:
+                return -20 if co2_kg > 3.0 else 5
+
+        # 6. Water
+        elif cat == "water":
+            if "shower" in act:
+                if quantity <= 5.0:
+                    return 15  # Efficient short shower
+                elif quantity <= 10.0:
+                    return 0
+                else:
+                    return -15 # Excessive shower
+            else:
+                return 10 if quantity <= 50.0 else -15
+
+        # Fallback based on CO2 emitted
+        if co2_kg <= 0.5:
+            return 20
+        elif co2_kg <= 2.0:
+            return 5
+        else:
+            return -int(min(35, co2_kg * 5))
+
     @classmethod
     def find_alternatives(
         cls, category: str, activity_type: str, quantity: float, unit: str, original_co2: float

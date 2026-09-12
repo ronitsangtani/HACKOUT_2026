@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
@@ -84,9 +85,115 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
     }
   }
 
+  int _calculatePointsDelta({
+    required String category,
+    required String activityName,
+    required double quantity,
+    required double co2Kg,
+  }) {
+    final cat = category.toLowerCase().trim();
+    final act = activityName.toLowerCase().trim();
+
+    // 1. Transport
+    if (cat.contains('transport')) {
+      if (act.contains('bicycle') || act.contains('walking') || act.contains('cycle')) {
+        return 35 + (quantity > 5.0 ? 5 : 0);
+      } else if (act.contains('metro') || act.contains('train')) {
+        return 25;
+      } else if (act.contains('ev') || act.contains('electric')) {
+        return 15;
+      } else if (act.contains('bus')) {
+        return 10;
+      } else if (act.contains('car') || act.contains('petrol') || act.contains('diesel')) {
+        final penalty = 15 + (quantity / 2.0).floor();
+        return -penalty.clamp(15, 45);
+      } else {
+        return co2Kg > 2.0 ? -10 : 5;
+      }
+    }
+
+    // 2. Energy
+    else if (cat.contains('energy')) {
+      if (act.contains('solar') || act.contains('renewable')) {
+        return 30;
+      } else if (act.contains('electricity')) {
+        if (quantity <= 8.0) {
+          return 10;
+        } else if (quantity <= 15.0) {
+          return 0;
+        } else if (quantity <= 30.0) {
+          return -15;
+        } else {
+          return -30;
+        }
+      } else if (act.contains('lpg') || act.contains('gas')) {
+        return quantity <= 1.0 ? -10 : -25;
+      } else {
+        return co2Kg > 5.0 ? -15 : 5;
+      }
+    }
+
+    // 3. Food / Diet
+    else if (cat.contains('food') || cat.contains('diet')) {
+      if (act.contains('plant') || act.contains('vegan') || act.contains('salad')) {
+        return (25 * quantity.clamp(1.0, 3.0)).round();
+      } else if (act.contains('dairy') || act.contains('coffee')) {
+        return quantity <= 2.0 ? 5 : -10;
+      } else if (act.contains('meat') || act.contains('beef') || act.contains('chicken')) {
+        return -(20 * quantity.clamp(1.0, 3.0)).round();
+      } else {
+        return co2Kg > 2.0 ? -10 : 10;
+      }
+    }
+
+    // 4. Waste
+    else if (cat.contains('waste')) {
+      if (act.contains('compost') || act.contains('organic')) {
+        return 30;
+      } else if (act.contains('recycle') || act.contains('polymer')) {
+        return 25;
+      } else if (act.contains('trash') || act.contains('landfill')) {
+        return -20;
+      } else {
+        return co2Kg < 0.5 ? 15 : -15;
+      }
+    }
+
+    // 5. Shopping / Goods
+    else if (cat.contains('shop') || cat.contains('goods')) {
+      if (act.contains('fashion') || act.contains('cloth')) {
+        return -(25 * quantity.clamp(1.0, 3.0)).round();
+      } else if (act.contains('electronic') || act.contains('device') || act.contains('phone')) {
+        return -35;
+      } else if (act.contains('grocer') || act.contains('essential')) {
+        if (quantity <= 5.0) return 10;
+        if (quantity <= 10.0) return 0;
+        return -10;
+      } else {
+        return co2Kg > 3.0 ? -20 : 5;
+      }
+    }
+
+    // 6. Water
+    else if (cat.contains('water')) {
+      if (act.contains('shower')) {
+        if (quantity <= 5.0) return 15;
+        if (quantity <= 10.0) return 0;
+        return -15;
+      } else {
+        return quantity <= 50.0 ? 10 : -15;
+      }
+    }
+
+    // Generic fallback
+    if (co2Kg <= 0.5) return 20;
+    if (co2Kg <= 2.0) return 5;
+    return -(co2Kg * 5).round().clamp(10, 35);
+  }
+
   Future<void> _submitActivity() async {
     final user = ref.read(authStateProvider).value;
-    if (user == null || _selectedCategory == null || _selectedActivity == null) return;
+    if (_selectedCategory == null || _selectedActivity == null) return;
 
     setState(() => _isSubmitting = true);
 
@@ -99,24 +206,75 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
         unit: _selectedActivity!['unit'] as String,
       );
 
+      final int pointsDelta = res.ecoPointsDelta != 0
+          ? res.ecoPointsDelta
+          : _calculatePointsDelta(
+              category: _selectedCategory!,
+              activityName: _selectedActivity!['name'] as String,
+              quantity: _quantity,
+              co2Kg: res.activity.co2Kg,
+            );
+
+      // Update Firestore user profile ecoPoints (clamped at 0 minimum)
+      if (user != null) {
+        try {
+          final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          final snap = await userRef.get();
+          if (snap.exists && snap.data() != null) {
+            final curr = (snap.data()!['ecoPoints'] as num?)?.toInt() ?? 50;
+            final updated = (curr + pointsDelta).clamp(0, 999999);
+            await userRef.update({'ecoPoints': updated});
+          }
+        } catch (_) {}
+      }
+
       setState(() {
-        _analysisResult = res;
+        _analysisResult = res.ecoPointsDelta != 0
+            ? res
+            : ActivityAnalysisResult(
+                activity: res.activity,
+                formulaUsed: res.formulaUsed,
+                ecoPointsDelta: pointsDelta,
+                isPositive: pointsDelta > 0,
+                alternatives: res.alternatives,
+              );
         _currentStep = 3; // Move to Celebration Screen!
       });
 
       // Refresh providers in background
       ref.invalidate(userActivitiesProvider);
-      ref.invalidate(userProfileProvider(user.uid));
+      if (user != null) {
+        ref.invalidate(userProfileProvider(user.uid));
+      }
     } catch (e) {
       // Graceful fallback for offline / mock calculation
       final factor = (_selectedActivity!['co2Factor'] as num?)?.toDouble() ?? 0.15;
       final calcCo2 = _quantity * factor;
+      final pointsDelta = _calculatePointsDelta(
+        category: _selectedCategory!,
+        activityName: _selectedActivity!['name'] as String,
+        quantity: _quantity,
+        co2Kg: calcCo2,
+      );
+
+      // Update Firestore user profile ecoPoints (clamped at 0 minimum)
+      if (user != null) {
+        try {
+          final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          final snap = await userRef.get();
+          if (snap.exists && snap.data() != null) {
+            final curr = (snap.data()!['ecoPoints'] as num?)?.toInt() ?? 50;
+            final updated = (curr + pointsDelta).clamp(0, 999999);
+            await userRef.update({'ecoPoints': updated});
+          }
+        } catch (_) {}
+      }
 
       setState(() {
         _analysisResult = ActivityAnalysisResult(
           activity: ActivityRecord(
             activityId: 'act_${DateTime.now().millisecondsSinceEpoch}',
-            userId: user.uid,
+            userId: user?.uid ?? 'guest_user',
             category: _selectedCategory!.toLowerCase(),
             activityType: _selectedActivity!['name'] as String,
             quantity: _quantity,
@@ -125,6 +283,8 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             createdAt: DateTime.now(),
           ),
           formulaUsed: 'IPCC Standard Emission Factors',
+          ecoPointsDelta: pointsDelta,
+          isPositive: pointsDelta > 0,
           alternatives: [
             AlternativeSuggestion(
               title: _selectedCategory == 'Transport'
@@ -141,6 +301,11 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
         );
         _currentStep = 3;
       });
+
+      ref.invalidate(userActivitiesProvider);
+      if (user != null) {
+        ref.invalidate(userProfileProvider(user.uid));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -545,6 +710,69 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
   Widget _buildStepCelebrationResult() {
     final co2 = _analysisResult?.activity.co2Kg ?? (_quantity * 0.192);
     final alternatives = _analysisResult?.alternatives ?? [];
+    final pointsDelta = _analysisResult?.ecoPointsDelta ?? _calculatePointsDelta(
+      category: _selectedCategory ?? '',
+      activityName: _selectedActivity?['name'] as String? ?? '',
+      quantity: _quantity,
+      co2Kg: co2,
+    );
+
+    final bool isReward = pointsDelta > 0;
+    final bool isPenalty = pointsDelta < 0;
+
+    final Color badgeBg = isReward
+        ? AppTheme.duoGreenLight.withValues(alpha: 0.5)
+        : isPenalty
+            ? AppTheme.duoOrangeLight.withValues(alpha: 0.5)
+            : AppTheme.duoGrayLight;
+
+    final Color badgeBorder = isReward
+        ? AppTheme.duoGreen
+        : isPenalty
+            ? AppTheme.duoOrange
+            : AppTheme.duoGray;
+
+    final Color badgeTextColor = isReward
+        ? AppTheme.duoGreenDark
+        : isPenalty
+            ? AppTheme.duoOrangeDark
+            : AppTheme.duoSubtext;
+
+    final String pointsText = isReward
+        ? '+$pointsDelta 🌱'
+        : isPenalty
+            ? '$pointsDelta 🔻'
+            : '0 🌱';
+
+    final String badgeLabel = isReward
+        ? 'EARNED'
+        : isPenalty
+            ? 'PENALTY'
+            : 'NEUTRAL';
+
+    final String badgeSubtext = isReward
+        ? 'Eco Points'
+        : isPenalty
+            ? 'Points Deducted'
+            : 'Baseline Met';
+
+    final String heroEmoji = isReward
+        ? '🌱'
+        : isPenalty
+            ? '⚠️'
+            : '🌍';
+
+    final String heroTitle = isReward
+        ? 'SUSTAINABLE CHOICE!'
+        : isPenalty
+            ? 'HIGH CARBON FOOTPRINT!'
+            : 'ACTIVITY LOGGED!';
+
+    final Color heroColor = isReward
+        ? AppTheme.duoGreenDark
+        : isPenalty
+            ? AppTheme.duoOrangeDark
+            : AppTheme.duoText;
 
     return Container(
       color: Colors.white,
@@ -553,22 +781,22 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
         child: Column(
           children: [
             const SizedBox(height: 10),
-            // Celebration Globe & Stars
+            // Celebration / Warning Globe
             Container(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.duoGreenLight,
+                color: isPenalty ? AppTheme.duoOrangeLight : AppTheme.duoGreenLight,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.duoGreen, width: 4),
+                border: Border.all(color: isPenalty ? AppTheme.duoOrange : AppTheme.duoGreen, width: 4),
               ),
               alignment: Alignment.center,
-              child: const Text('🌍', style: TextStyle(fontSize: 54)),
+              child: Text(heroEmoji, style: const TextStyle(fontSize: 54)),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'ACTIVITY COMPLETE!',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppTheme.duoGreenDark),
+            Text(
+              heroTitle,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: heroColor),
             ),
             const SizedBox(height: 6),
             Text(
@@ -606,25 +834,49 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.duoGreenLight.withValues(alpha: 0.5),
+                      color: badgeBg,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.duoGreen, width: 2),
+                      border: Border.all(color: badgeBorder, width: 2),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
-                        Text('EARNED', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: AppTheme.duoGreenDark)),
-                        SizedBox(height: 6),
+                        Text(badgeLabel, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: badgeTextColor)),
+                        const SizedBox(height: 6),
                         Text(
-                          '+20 🌱',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppTheme.duoGreenDark),
+                          pointsText,
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: badgeTextColor),
                         ),
-                        Text('Eco Points', style: TextStyle(fontSize: 11, color: AppTheme.duoGreenDark, fontWeight: FontWeight.bold)),
+                        Text(badgeSubtext, style: TextStyle(fontSize: 11, color: badgeTextColor, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
+
+            if (isPenalty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.duoOrangeLight.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.duoOrange, width: 1.5),
+                ),
+                child: const Row(
+                  children: [
+                    Text('⚠️', style: TextStyle(fontSize: 22)),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'This action generated high carbon emissions exceeding baseline standards. Choose the recommended alternatives below to recover points!',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.duoOrangeDark),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 24),
 

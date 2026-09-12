@@ -55,9 +55,31 @@ class ActivityService:
             original_co2=co2_kg,
         )
 
+        # Calculate conditional points delta (positive reward or negative penalty)
+        eco_points_delta = carbon_service.calculate_points_delta(
+            category=request.category,
+            activity_type=request.activityType,
+            quantity=request.quantity,
+            co2_kg=co2_kg,
+        )
+
+        # Update user's ecoPoints in Cloud Firestore (clamped at minimum 0)
+        if db is not None:
+            try:
+                user_ref = db.collection("users").document(user_id)
+                user_doc = user_ref.get()
+                if user_doc.exists and user_doc.to_dict():
+                    curr_points = int(user_doc.to_dict().get("ecoPoints", 50))
+                    new_points = max(0, curr_points + eco_points_delta)
+                    user_ref.update({"ecoPoints": new_points})
+            except Exception:
+                pass
+
         return ActivityAnalysisResponse(
             **record,
             formulaUsed=method,
+            ecoPointsDelta=eco_points_delta,
+            isPositive=eco_points_delta > 0,
             alternatives=alternatives,
         )
 

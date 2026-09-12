@@ -255,17 +255,23 @@ class AlternativeSuggestion {
 class ActivityAnalysisResult {
   final ActivityRecord activity;
   final String formulaUsed;
+  final int ecoPointsDelta;
+  final bool isPositive;
   final List<AlternativeSuggestion> alternatives;
 
   const ActivityAnalysisResult({
     required this.activity,
     required this.formulaUsed,
+    this.ecoPointsDelta = 0,
+    this.isPositive = true,
     required this.alternatives,
   });
 
   factory ActivityAnalysisResult.fromMap(Map<String, dynamic> map) {
     final activity = ActivityRecord.fromMap(map);
     final formula = map['formulaUsed'] as String? ?? '';
+    final ecoPointsDelta = (map['ecoPointsDelta'] as num?)?.toInt() ?? 0;
+    final isPositive = (map['isPositive'] as bool?) ?? (ecoPointsDelta >= 0);
     final rawAlts = map['alternatives'] as List? ?? [];
     final alts = rawAlts
         .map((a) => AlternativeSuggestion.fromMap(Map<String, dynamic>.from(a as Map)))
@@ -274,6 +280,8 @@ class ActivityAnalysisResult {
     return ActivityAnalysisResult(
       activity: activity,
       formulaUsed: formula,
+      ecoPointsDelta: ecoPointsDelta,
+      isPositive: isPositive,
       alternatives: alts,
     );
   }

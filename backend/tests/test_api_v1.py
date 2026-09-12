@@ -50,6 +50,21 @@ class TestApiV1(unittest.TestCase):
         top_alt = created["alternatives"][0]
         self.assertGreater(top_alt["co2ReductionKg"], 0)
         self.assertIn("explanation", top_alt)
+        # Car commute is excessive carbon: must yield negative points
+        self.assertLess(created["ecoPointsDelta"], 0)
+        self.assertFalse(created["isPositive"])
+
+        # Test positive sustainable activity (Bicycle / Walking)
+        green_res = client.post("/api/v1/activities", json={
+            "category": "transport",
+            "activityType": "Bicycle",
+            "quantity": 10.0,
+            "unit": "km",
+        }, headers=AUTH_HEADERS)
+        self.assertEqual(green_res.status_code, 201)
+        green_data = green_res.json()
+        self.assertGreater(green_data["ecoPointsDelta"], 0)
+        self.assertTrue(green_data["isPositive"])
 
         get_res = client.get("/api/v1/activities/user123", headers=AUTH_HEADERS)
         self.assertEqual(get_res.status_code, 200)
