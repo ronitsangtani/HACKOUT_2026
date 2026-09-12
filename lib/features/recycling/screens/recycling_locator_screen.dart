@@ -28,7 +28,7 @@ class _RecyclingLocatorScreenState extends ConsumerState<RecyclingLocatorScreen>
     {'key': 'recycling', 'label': 'Recycling', 'emoji': '♻️'},
     {'key': 'transport', 'label': 'Transport', 'emoji': '🚌'},
     {'key': 'ev', 'label': 'EV Hubs', 'emoji': '🔋'},
-    {'key': 'stores', 'label': 'Eco Stores', 'emoji': '🌱'},
+    {'key': 'stores', 'label': 'Eco Places', 'emoji': '🌱'},
   ];
 
   void _zoomIn() {
@@ -56,7 +56,7 @@ class _RecyclingLocatorScreenState extends ConsumerState<RecyclingLocatorScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'ECO MAP',
+          '🌍 ECO MAP',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8, fontSize: 18),
         ),
         actions: [

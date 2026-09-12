@@ -23,7 +23,7 @@ class LeaderboardScreen extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'LEADERBOARD',
+          '🏆 ECO LEAGUE',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8, fontSize: 18),
         ),
         actions: [

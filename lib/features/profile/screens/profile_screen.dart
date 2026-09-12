@@ -4,6 +4,7 @@ import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/providers/ecoloop_providers.dart';
 import '../../../core/widgets/achievement_badge_widget.dart';
+import '../../../core/widgets/polar_bear_widget.dart';
 import '../../../core/widgets/primary_game_button.dart';
 import '../../auth/providers/auth_providers.dart';
 
@@ -59,18 +60,26 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Player Header
+              // 1. Player Header with Polar Bear Mascot
               Center(
                 child: Column(
                   children: [
                     Stack(
+                      alignment: Alignment.center,
                       children: [
-                        CircleAvatar(
-                          radius: 46,
-                          backgroundColor: AppTheme.duoGreen,
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                            style: const TextStyle(fontSize: 42, color: Colors.white, fontWeight: FontWeight.w900),
+                        Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            color: AppTheme.duoBlueLight.withValues(alpha: 0.4),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.duoBlue, width: 3),
+                          ),
+                          alignment: Alignment.center,
+                          child: const PolarBearWidget(
+                            mood: PolarBearMood.happy,
+                            size: 90,
+                            showPlatform: false,
                           ),
                         ),
                         Positioned(
@@ -98,7 +107,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '🌱 Eco Explorer • Member since Sept 2026',
+                      'Eco Explorer • Level $level',
                       style: const TextStyle(fontSize: 13, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
                     ),
                   ],

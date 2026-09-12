@@ -12,6 +12,7 @@ import 'package:ecoloop/features/rewards/screens/rewards_screen.dart';
 import 'package:ecoloop/features/dashboard/dashboard_screen.dart';
 
 import 'package:ecoloop/core/providers/ecoloop_providers.dart';
+import 'package:ecoloop/core/widgets/polar_bear_widget.dart';
 import 'package:ecoloop/models/firestore_models.dart';
 
 void main() {
@@ -31,20 +32,20 @@ void main() {
 
       // Check Duolingo navigation destinations
       expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Rewards'), findsOneWidget);
+      expect(find.text('Map'), findsOneWidget);
       expect(find.text('Add'), findsOneWidget);
       expect(find.text('Rank'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
 
-      // Tap Rewards tab
-      await tester.tap(find.text('Rewards'));
+      // Tap Map tab
+      await tester.tap(find.text('Map'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('ECO REWARDS'), findsOneWidget);
+      expect(find.text('🌍 ECO MAP'), findsOneWidget);
 
       // Tap Rank tab
       await tester.tap(find.text('Rank'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('LEADERBOARD'), findsOneWidget);
+      expect(find.text('🏆 ECO LEAGUE'), findsOneWidget);
 
       // Tap Profile tab
       await tester.tap(find.text('Profile'));
@@ -93,11 +94,11 @@ void main() {
 
       // Select Transport
       await tester.tap(find.text('Transport'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Tap CONTINUE button
       await tester.tap(find.text('CONTINUE'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Step 2: Activity Selection
       expect(find.text('Which transport action?'), findsOneWidget);
@@ -106,20 +107,24 @@ void main() {
     });
 
     testWidgets('Awards positive points for sustainable low-carbon choices (Bicycle)', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
       await tester.pumpWidget(createTestWidget(const AddActivityScreen(initialCategory: 'Transport')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Step 2: Pick Bicycle / Walking
       await tester.tap(find.text('Bicycle / Walking'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Continue to quantity
       await tester.tap(find.text('CONTINUE'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Step 3: Calculate & Log
       await tester.tap(find.text('CALCULATE & LOG'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 600));
 
       // Verify Celebration Screen awards positive points
       expect(find.text('SUSTAINABLE CHOICE!'), findsOneWidget);
@@ -129,19 +134,19 @@ void main() {
 
     testWidgets('Applies negative penalty points for excessive carbon choice (Solo Petrol Car)', (tester) async {
       await tester.pumpWidget(createTestWidget(const AddActivityScreen(initialCategory: 'Transport')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Step 2: Pick Solo Petrol Car
       await tester.tap(find.text('Solo Petrol Car'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Continue to quantity
       await tester.tap(find.text('CONTINUE'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Step 3: Calculate & Log
       await tester.tap(find.text('CALCULATE & LOG'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 600));
 
       // Verify Celebration Screen displays penalty warning and negative points
       expect(find.text('HIGH CARBON FOOTPRINT!'), findsOneWidget);
@@ -227,6 +232,35 @@ void main() {
       expect(find.text('Daily Activity Reminder'), findsOneWidget);
       expect(find.text('Weekly Footprint Report'), findsOneWidget);
       expect(find.text('Metric System'), findsOneWidget);
+    });
+  });
+
+  group('PolarBearWidget Mascot Tests', () {
+    testWidgets('Renders PolarBearWidget in various emotional states', (tester) async {
+      await tester.pumpWidget(createTestWidget(
+        const Column(
+          children: [
+            PolarBearWidget(mood: PolarBearMood.happy, size: 100),
+            PolarBearWidget(mood: PolarBearMood.worried, size: 100),
+            PolarBearWidget(mood: PolarBearMood.celebrating, size: 100),
+          ],
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byType(PolarBearWidget), findsNWidgets(3));
+    });
+
+    testWidgets('Dashboard displays Polar Bear stage and Carbon Status card', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(createTestWidget(const DashboardScreen()));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('YOUR CARBON STATUS'), findsOneWidget);
+      expect(find.byType(PolarBearWidget), findsOneWidget);
     });
   });
 }

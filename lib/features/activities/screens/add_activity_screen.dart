@@ -5,6 +5,7 @@ import '../../../app/theme.dart';
 import '../../../core/providers/ecoloop_providers.dart';
 import '../../../core/services/ecoloop_api_service.dart';
 import '../../../core/widgets/eco_progress_bar.dart';
+import '../../../core/widgets/polar_bear_widget.dart';
 import '../../../core/widgets/primary_game_button.dart';
 import '../../../models/firestore_models.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -83,6 +84,82 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
       _selectedCategory = widget.initialCategory;
       _currentStep = 1;
     }
+  }
+
+  PolarBearMood _getSelectionMood() {
+    if (_selectedActivity == null) return PolarBearMood.happy;
+    final actName = (_selectedActivity!['name'] as String).toLowerCase();
+    final co2Factor = (_selectedActivity!['co2Factor'] as num?)?.toDouble() ?? 0.0;
+    if (actName.contains('bicycle') ||
+        actName.contains('walking') ||
+        actName.contains('solar') ||
+        actName.contains('plant') ||
+        actName.contains('compost') ||
+        actName.contains('recycle')) {
+      return PolarBearMood.celebrating;
+    }
+    if (co2Factor >= 0.15 ||
+        actName.contains('petrol') ||
+        actName.contains('meat') ||
+        actName.contains('fashion') ||
+        actName.contains('trash')) {
+      return PolarBearMood.worried;
+    }
+    return PolarBearMood.happy;
+  }
+
+  String _getSelectionSpeech() {
+    if (_selectedActivity == null) {
+      return "Pick your sustainability action! I'll react to your impact. ❄️";
+    }
+    final actName = _selectedActivity!['name'] as String;
+    final mood = _getSelectionMood();
+    if (mood == PolarBearMood.celebrating) {
+      return "Yay! $actName is zero/low carbon! You're keeping my ice cool! ❄️";
+    } else if (mood == PolarBearMood.worried) {
+      return "Careful! $actName creates high emissions. My home gets warmer! 🥺";
+    } else {
+      return "$actName selected. Let's calculate your impact!";
+    }
+  }
+
+  Widget _buildMascotFeedback() {
+    final mood = _getSelectionMood();
+    final isWorried = mood == PolarBearMood.worried;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isWorried
+            ? AppTheme.duoOrangeLight.withValues(alpha: 0.4)
+            : AppTheme.duoBlueLight.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isWorried ? AppTheme.duoOrange : AppTheme.duoBlueLight,
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          PolarBearWidget(
+            mood: mood,
+            size: 52,
+            showPlatform: false,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _getSelectionSpeech(),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: isWorried ? AppTheme.duoOrangeDark : AppTheme.duoText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   int _calculatePointsDelta({
@@ -487,7 +564,9 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             'Select the exact vehicle, appliance or material you used',
             style: TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _buildMascotFeedback(),
+          const SizedBox(height: 8),
           ...list.map((act) {
             final isSelected = _selectedActivity?['name'] == act['name'];
 
@@ -586,7 +665,9 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             'Quantity in $unit for ${_selectedActivity?['name']}',
             style: const TextStyle(fontSize: 14, color: AppTheme.duoSubtext, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 14),
+          _buildMascotFeedback(),
+          const SizedBox(height: 16),
 
           // Big tactile counter display
           Center(
@@ -756,12 +837,6 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
             ? 'Points Deducted'
             : 'Baseline Met';
 
-    final String heroEmoji = isReward
-        ? '🌱'
-        : isPenalty
-            ? '⚠️'
-            : '🌍';
-
     final String heroTitle = isReward
         ? 'SUSTAINABLE CHOICE!'
         : isPenalty
@@ -781,17 +856,13 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
         child: Column(
           children: [
             const SizedBox(height: 10),
-            // Celebration / Warning Globe
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: isPenalty ? AppTheme.duoOrangeLight : AppTheme.duoGreenLight,
-                shape: BoxShape.circle,
-                border: Border.all(color: isPenalty ? AppTheme.duoOrange : AppTheme.duoGreen, width: 4),
-              ),
-              alignment: Alignment.center,
-              child: Text(heroEmoji, style: const TextStyle(fontSize: 54)),
+            // Polar Bear Reaction Hero Mascot
+            PolarBearWidget(
+              mood: isReward
+                  ? PolarBearMood.celebrating
+                  : (isPenalty ? PolarBearMood.worried : PolarBearMood.happy),
+              size: 140,
+              showPlatform: true,
             ),
             const SizedBox(height: 16),
             Text(
@@ -940,6 +1011,24 @@ class _AddActivityScreenState extends ConsumerState<AddActivityScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    PrimaryGameButton(
+                      text: 'TRY THIS ALTERNATIVE',
+                      color: GameButtonColor.blue,
+                      height: 44,
+                      fontSize: 13,
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '🌱 Committed to ${alternatives.first.title}! You will save ~${alternatives.first.co2ReductionKg.toStringAsFixed(1)} kg CO₂!',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            backgroundColor: AppTheme.duoGreenDark,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
