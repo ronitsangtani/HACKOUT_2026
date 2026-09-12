@@ -9,6 +9,7 @@ import 'package:ecoloop/features/profile/screens/settings_screen.dart';
 import 'package:ecoloop/features/recommendations/screens/recommendations_screen.dart';
 import 'package:ecoloop/features/recommendations/screens/what_if_simulator_screen.dart';
 import 'package:ecoloop/features/rewards/screens/rewards_screen.dart';
+import 'package:ecoloop/features/dashboard/dashboard_screen.dart';
 
 import 'package:ecoloop/core/providers/ecoloop_providers.dart';
 import 'package:ecoloop/models/firestore_models.dart';
@@ -49,6 +50,34 @@ void main() {
       await tester.tap(find.text('Profile'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('PROFILE'), findsOneWidget);
+    });
+  });
+
+  group('DashboardScreen Journey Path Tests', () {
+    testWidgets('Renders all 6 journey levels concurrently and allows tapping any level directly', (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(createTestWidget(const DashboardScreen()));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify all 6 levels are present together
+      expect(find.text('Transport'), findsWidgets);
+      expect(find.text('Energy'), findsOneWidget);
+      expect(find.text('Diet & Food'), findsOneWidget);
+      expect(find.text('Zero Waste'), findsOneWidget);
+      expect(find.text('Circular Goods'), findsOneWidget);
+      expect(find.text('Eco Master'), findsOneWidget);
+
+      // Verify tapping 'Energy' directly opens the energy flow without any locked dialog
+      await tester.tap(find.text('Energy'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Which energy action?'), findsOneWidget);
+      expect(find.text('Grid Electricity'), findsOneWidget);
     });
   });
 

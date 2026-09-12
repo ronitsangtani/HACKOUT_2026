@@ -53,10 +53,14 @@ class _JourneyNodeWidgetState extends State<JourneyNodeWidget> with SingleTicker
   @override
   void didUpdateWidget(covariant JourneyNodeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.status == NodeStatus.current && !oldWidget.status.name.contains('current')) {
-      _pulseController.repeat(reverse: true);
-    } else if (widget.status != NodeStatus.current) {
-      _pulseController.stop();
+    if (widget.status == NodeStatus.current) {
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat(reverse: true);
+      }
+    } else {
+      if (_pulseController.isAnimating) {
+        _pulseController.stop();
+      }
     }
   }
 
@@ -92,14 +96,12 @@ class _JourneyNodeWidgetState extends State<JourneyNodeWidget> with SingleTicker
     final double bevel = _isPressed ? 2.0 : 6.0;
 
     Widget nodeCore = GestureDetector(
-      onTapDown: isLocked ? null : (_) => setState(() => _isPressed = true),
-      onTapUp: isLocked
-          ? null
-          : (_) {
-              setState(() => _isPressed = false);
-              widget.onTap?.call();
-            },
-      onTapCancel: isLocked ? null : () => setState(() => _isPressed = false),
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap?.call();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 60),
         width: size,
@@ -211,19 +213,22 @@ class _JourneyNodeWidgetState extends State<JourneyNodeWidget> with SingleTicker
         const SizedBox(height: 8),
 
         // Node Title
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isLocked ? AppTheme.duoGrayLight : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.duoGray, width: 1.5),
-          ),
-          child: Text(
-            widget.title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: isLocked ? AppTheme.duoGrayDark : AppTheme.duoText,
+        GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: isLocked ? AppTheme.duoGrayLight : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.duoGray, width: 1.5),
+            ),
+            child: Text(
+              widget.title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isLocked ? AppTheme.duoGrayDark : AppTheme.duoText,
+              ),
             ),
           ),
         ),

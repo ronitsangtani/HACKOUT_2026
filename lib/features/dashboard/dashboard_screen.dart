@@ -35,48 +35,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  void _showLockedDialog(String sectorName, String prereq) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Column(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AppTheme.duoGrayLight,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.lock_rounded, color: AppTheme.duoGrayDark, size: 36),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '$sectorName Locked',
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-            ),
-          ],
-        ),
-        content: Text(
-          'Complete $prereq to unlock the $sectorName sustainability sector!',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: AppTheme.duoSubtext, fontSize: 14),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          PrimaryGameButton(
-            text: 'GOT IT',
-            color: GameButtonColor.green,
-            height: 48,
-            onPressed: () => Navigator.pop(ctx),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).value;
@@ -90,32 +48,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final records = activitiesAsync.value ?? [];
     final hasTransport = records.any((r) => r.category.toLowerCase().contains('transport'));
     final hasEnergy = records.any((r) => r.category.toLowerCase().contains('energy'));
-    final hasFood = records.any((r) => r.category.toLowerCase().contains('food') || r.category.toLowerCase().contains('shopping'));
+    final hasFood = records.any((r) => r.category.toLowerCase().contains('food') || r.category.toLowerCase().contains('diet'));
     final hasWaste = records.any((r) => r.category.toLowerCase().contains('waste'));
+    final hasShopping = records.any((r) => r.category.toLowerCase().contains('shop') || r.category.toLowerCase().contains('circular') || r.category.toLowerCase().contains('good'));
+    final hasMaster = (records.length >= 5) || (hasTransport && hasEnergy && hasFood && hasWaste && hasShopping);
 
-    // Compute status of nodes along the path
-    final NodeStatus transportStatus = hasTransport ? NodeStatus.completed : NodeStatus.current;
+    // Active focus level receives the pulsing 'START' badge
+    // All other uncompleted levels are inProgress (active and fully playable simultaneously)
+    final String activeFocus;
+    if (!hasTransport) {
+      activeFocus = 'transport';
+    } else if (!hasEnergy) {
+      activeFocus = 'energy';
+    } else if (!hasFood) {
+      activeFocus = 'food';
+    } else if (!hasWaste) {
+      activeFocus = 'waste';
+    } else if (!hasShopping) {
+      activeFocus = 'shopping';
+    } else {
+      activeFocus = 'master';
+    }
+
+    final NodeStatus transportStatus = hasTransport
+        ? NodeStatus.completed
+        : (activeFocus == 'transport' ? NodeStatus.current : NodeStatus.inProgress);
     final NodeStatus energyStatus = hasEnergy
         ? NodeStatus.completed
-        : hasTransport
-            ? NodeStatus.current
-            : NodeStatus.locked;
+        : (activeFocus == 'energy' ? NodeStatus.current : NodeStatus.inProgress);
     final NodeStatus foodStatus = hasFood
         ? NodeStatus.completed
-        : (hasTransport && hasEnergy)
-            ? NodeStatus.current
-            : NodeStatus.locked;
+        : (activeFocus == 'food' ? NodeStatus.current : NodeStatus.inProgress);
     final NodeStatus wasteStatus = hasWaste
         ? NodeStatus.completed
-        : (hasTransport && hasEnergy && hasFood)
-            ? NodeStatus.current
-            : NodeStatus.locked;
-    final NodeStatus shoppingStatus = (hasTransport && hasEnergy && hasFood && hasWaste)
-        ? NodeStatus.current
-        : NodeStatus.locked;
-    final NodeStatus lifestyleStatus = (hasTransport && hasEnergy && hasFood && hasWaste && records.length >= 5)
-        ? NodeStatus.current
-        : NodeStatus.locked;
+        : (activeFocus == 'waste' ? NodeStatus.current : NodeStatus.inProgress);
+    final NodeStatus shoppingStatus = hasShopping
+        ? NodeStatus.completed
+        : (activeFocus == 'shopping' ? NodeStatus.current : NodeStatus.inProgress);
+    final NodeStatus lifestyleStatus = hasMaster
+        ? NodeStatus.completed
+        : (activeFocus == 'master' ? NodeStatus.current : NodeStatus.inProgress);
+
+    final double transportProgress = hasTransport ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('transport')).length / 2).clamp(0.25, 0.9);
+    final double energyProgress = hasEnergy ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('energy')).length / 2).clamp(0.25, 0.9);
+    final double foodProgress = hasFood ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('food') || r.category.toLowerCase().contains('diet')).length / 2).clamp(0.25, 0.9);
+    final double wasteProgress = hasWaste ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('waste')).length / 2).clamp(0.25, 0.9);
+    final double shoppingProgress = hasShopping ? 1.0 : (records.where((r) => r.category.toLowerCase().contains('shop') || r.category.toLowerCase().contains('circular') || r.category.toLowerCase().contains('good')).length / 2).clamp(0.25, 0.9);
+    final double masterProgress = hasMaster ? 1.0 : (records.length / 5).clamp(0.2, 0.9);
 
     // Daily Goal calculation (e.g. Target: 2.0 kg saved, actual logged count * 0.7 kg)
     final double co2SavedToday = (records.length * 0.7).clamp(0.0, 2.0);
@@ -277,6 +256,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Transport',
                   emoji: '🚗',
                   status: transportStatus,
+                  progress: transportProgress,
                   onTap: () => _openActivityFlow('Transport'),
                 ),
               ),
@@ -289,9 +269,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Energy',
                   emoji: '⚡',
                   status: energyStatus,
-                  onTap: energyStatus == NodeStatus.locked
-                      ? () => _showLockedDialog('Energy', 'Transport')
-                      : () => _openActivityFlow('Energy'),
+                  progress: energyProgress,
+                  onTap: () => _openActivityFlow('Energy'),
                 ),
               ),
               _buildPathConnector(alignment: const Alignment(0.25, 0)),
@@ -303,9 +282,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Diet & Food',
                   emoji: '🍽️',
                   status: foodStatus,
-                  onTap: foodStatus == NodeStatus.locked
-                      ? () => _showLockedDialog('Diet & Food', 'Energy')
-                      : () => _openActivityFlow('Shopping'),
+                  progress: foodProgress,
+                  onTap: () => _openActivityFlow('Food'),
                 ),
               ),
               _buildPathConnector(alignment: const Alignment(-0.25, 0)),
@@ -317,9 +295,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Zero Waste',
                   emoji: '♻️',
                   status: wasteStatus,
-                  onTap: wasteStatus == NodeStatus.locked
-                      ? () => _showLockedDialog('Zero Waste', 'Diet & Food')
-                      : () => _openActivityFlow('Waste'),
+                  progress: wasteProgress,
+                  onTap: () => _openActivityFlow('Waste'),
                 ),
               ),
               _buildPathConnector(alignment: Alignment.center),
@@ -331,9 +308,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Circular Goods',
                   emoji: '🛍️',
                   status: shoppingStatus,
-                  onTap: shoppingStatus == NodeStatus.locked
-                      ? () => _showLockedDialog('Circular Goods', 'Zero Waste')
-                      : () => _openActivityFlow('Shopping'),
+                  progress: shoppingProgress,
+                  onTap: () => _openActivityFlow('Shopping'),
                 ),
               ),
               _buildPathConnector(alignment: const Alignment(0.25, 0)),
@@ -345,9 +321,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   title: 'Eco Master',
                   emoji: '🌍',
                   status: lifestyleStatus,
-                  onTap: lifestyleStatus == NodeStatus.locked
-                      ? () => _showLockedDialog('Eco Master', 'all foundational sectors')
-                      : () => _openActivityFlow('Transport'),
+                  progress: masterProgress,
+                  onTap: () => _openActivityFlow(null),
                 ),
               ),
 
