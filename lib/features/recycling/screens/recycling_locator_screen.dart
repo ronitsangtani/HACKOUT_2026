@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -54,7 +54,7 @@ class _RecyclingLocatorScreenState extends ConsumerState<RecyclingLocatorScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Centers',
-            onPressed: () => ref.refresh(recyclingCentersProvider(_selectedMaterial)),
+            onPressed: () => ref.invalidate(recyclingCentersProvider(_selectedMaterial)),
           ),
         ],
       ),
@@ -278,7 +278,8 @@ class _RecyclingLocatorScreenState extends ConsumerState<RecyclingLocatorScreen>
                   child: RefreshIndicator(
                     color: AppTheme.primaryGreen,
                     onRefresh: () async {
-                      await ref.refresh(recyclingCentersProvider(_selectedMaterial).future);
+                      ref.invalidate(recyclingCentersProvider(_selectedMaterial));
+                      await ref.read(recyclingCentersProvider(_selectedMaterial).future);
                     },
                     child: filteredCenters.isEmpty
                         ? ListView(

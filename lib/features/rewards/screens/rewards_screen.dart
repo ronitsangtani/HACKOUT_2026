@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
@@ -29,7 +29,7 @@ class RewardsScreen extends ConsumerWidget {
             tooltip: 'Refresh Rewards',
             onPressed: () {
               if (user != null) {
-                ref.refresh(userProfileProvider(user.uid));
+                ref.invalidate(userProfileProvider(user.uid));
               }
             },
           ),
@@ -40,7 +40,8 @@ class RewardsScreen extends ConsumerWidget {
           color: AppTheme.primaryGreen,
           onRefresh: () async {
             if (user != null) {
-              await ref.refresh(userProfileProvider(user.uid).future);
+              ref.invalidate(userProfileProvider(user.uid));
+              await ref.read(userProfileProvider(user.uid).future);
             }
           },
           child: SingleChildScrollView(

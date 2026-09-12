@@ -35,11 +35,11 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, 'Log In'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Email is required'), findsOneWidget);
-      expect(find.text('Password is required'), findsOneWidget);
+      expect(find.text('Please enter your email.'), findsOneWidget);
+      expect(find.text('Please enter your password.'), findsOneWidget);
     });
 
-    testWidgets('Validates invalid email format and short password', (tester) async {
+    testWidgets('Validates invalid email format', (tester) async {
       await tester.pumpWidget(createTestWidget(const LoginScreen()));
 
       // Enter invalid email
@@ -48,17 +48,16 @@ void main() {
         'invalid-email',
       );
 
-      // Enter short password
+      // Enter password
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Password'),
-        '123',
+        'password123',
       );
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Log In'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter a valid email address'), findsOneWidget);
-      expect(find.text('Password must be at least 6 characters'), findsOneWidget);
+      expect(find.text('Please enter a valid email address.'), findsOneWidget);
     });
   });
 

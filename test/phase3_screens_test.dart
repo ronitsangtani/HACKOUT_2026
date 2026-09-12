@@ -10,9 +10,14 @@ import 'package:ecoloop/features/recommendations/screens/recommendations_screen.
 import 'package:ecoloop/features/recommendations/screens/what_if_simulator_screen.dart';
 import 'package:ecoloop/features/recycling/screens/recycling_locator_screen.dart';
 
+import 'package:ecoloop/core/providers/ecoloop_providers.dart';
+import 'package:ecoloop/features/recycling/models/recycling_center.dart';
+import 'package:ecoloop/models/firestore_models.dart';
+
 void main() {
-  Widget createTestWidget(Widget child) {
+  Widget createTestWidget(Widget child, [List overrides = const []]) {
     return ProviderScope(
+      overrides: overrides.cast(),
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         home: child,
@@ -106,7 +111,30 @@ void main() {
 
   group('RecommendationsScreen Tests', () {
     testWidgets('Renders circular recommendation cards and filters', (tester) async {
-      await tester.pumpWidget(createTestWidget(const RecommendationsScreen()));
+      await tester.pumpWidget(createTestWidget(
+        const RecommendationsScreen(),
+        [
+          circularRecommendationsProvider.overrideWith((ref) async => [
+            const RecommendationRecord(
+              recommendationId: 'rec_001',
+              category: 'Household Energy',
+              title: 'Switch to Cold Water Laundry',
+              description: 'Washing clothes at 30°C or cold water uses 75-90% less electricity.',
+              estimatedCo2Saving: '0.6 kg CO2e / load',
+              estimatedCostImpact: '-15% energy cost',
+            ),
+            const RecommendationRecord(
+              recommendationId: 'rec_002',
+              category: 'Shopping & Goods',
+              title: 'Repair Damaged Smartphone Display',
+              description: 'Fixing the screen rather than buying a new phone prevents 60-80 kg CO2e.',
+              estimatedCo2Saving: '70 kg CO2e',
+              estimatedCostImpact: '-75% replacement expense',
+            ),
+          ]),
+        ],
+      ));
+      await tester.pumpAndSettle();
 
       expect(find.text('Circular Recommendations'), findsOneWidget);
       expect(find.text('Switch to Cold Water Laundry'), findsOneWidget);
@@ -116,7 +144,13 @@ void main() {
 
   group('RecyclingLocatorScreen Tests', () {
     testWidgets('Renders search and recycling drop-off centers', (tester) async {
-      await tester.pumpWidget(createTestWidget(const RecyclingLocatorScreen()));
+      await tester.pumpWidget(createTestWidget(
+        const RecyclingLocatorScreen(),
+        [
+          recyclingCentersProvider.overrideWith((ref, material) async => RecyclingCenter.mockCenters),
+        ],
+      ));
+      await tester.pumpAndSettle();
 
       expect(find.text('Recycling & Circular Hubs'), findsOneWidget);
       expect(find.text('GreenEarth E-Waste & Battery Drop-Off'), findsOneWidget);

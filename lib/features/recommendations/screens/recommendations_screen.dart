@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../../../core/providers/ecoloop_providers.dart';
@@ -36,7 +36,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Recommendations',
-            onPressed: () => ref.refresh(circularRecommendationsProvider),
+            onPressed: () => ref.invalidate(circularRecommendationsProvider),
           ),
         ],
       ),
@@ -74,7 +74,10 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                 ),
                 error: (err, _) => RefreshIndicator(
                   color: AppTheme.primaryGreen,
-                  onRefresh: () async => ref.refresh(circularRecommendationsProvider.future),
+                  onRefresh: () async {
+                    ref.invalidate(circularRecommendationsProvider);
+                    await ref.read(circularRecommendationsProvider.future);
+                  },
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [
@@ -87,7 +90,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                             Text('Could not load recommendations: $err', style: const TextStyle(color: Colors.black54), textAlign: TextAlign.center),
                             const SizedBox(height: 12),
                             ElevatedButton(
-                              onPressed: () => ref.refresh(circularRecommendationsProvider),
+                              onPressed: () => ref.invalidate(circularRecommendationsProvider),
                               child: const Text('Retry'),
                             ),
                           ],
@@ -120,7 +123,10 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
 
                   return RefreshIndicator(
                     color: AppTheme.primaryGreen,
-                    onRefresh: () async => ref.refresh(circularRecommendationsProvider.future),
+                    onRefresh: () async {
+                      ref.invalidate(circularRecommendationsProvider);
+                      await ref.read(circularRecommendationsProvider.future);
+                    },
                     child: filteredItems.isEmpty
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),

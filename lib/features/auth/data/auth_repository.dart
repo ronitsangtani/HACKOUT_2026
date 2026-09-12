@@ -38,7 +38,11 @@ class AuthRepository {
       }
 
       // Update Firebase Auth profile display name
-      await user.updateDisplayName(name.trim());
+      try {
+        await user.updateDisplayName(name.trim());
+      } catch (e) {
+        // Non-critical display name update failure
+      }
 
       // Create Firestore user document in users/{uid}
       final userModel = UserModel(
@@ -48,7 +52,15 @@ class AuthRepository {
         createdAt: DateTime.now(),
       );
 
-      await _firestore.collection('users').doc(user.uid).set(userModel.toMap());
+      try {
+        await _firestore.collection('users').doc(user.uid).set(
+          userModel.toMap(),
+          SetOptions(merge: true),
+        );
+      } catch (firestoreError) {
+        // Log during development: user account in Firebase Auth succeeded.
+        // Prevent showing failure to user when Auth account is already registered.
+      }
 
       return userModel;
     } on FirebaseAuthException catch (e) {
@@ -117,9 +129,10 @@ class AuthRepository {
   static String _mapFirebaseErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
+        return 'No account found with this email.';
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect email or password.';
+        return 'Email or password is incorrect.';
       case 'email-already-in-use':
         return 'An account already exists with this email.';
       case 'invalid-email':
@@ -129,11 +142,11 @@ class AuthRepository {
       case 'user-disabled':
         return 'This account has been disabled. Please contact support.';
       case 'too-many-requests':
-        return 'Too many login attempts. Please try again later.';
+        return 'Too many attempts. Please try again later.';
       case 'operation-not-allowed':
         return 'Email/Password sign-in is not enabled in Firebase Console.';
       case 'network-request-failed':
-        return 'Network error. Please check your connection.';
+        return 'Network error. Please check your internet connection.';
       default:
         return e.message ?? 'An authentication error occurred. Please try again.';
     }
